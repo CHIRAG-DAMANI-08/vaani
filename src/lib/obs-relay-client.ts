@@ -351,27 +351,17 @@ class OBSRelayManager {
         }
       };
 
-      // Send accumulated audio every 3 seconds
-      this.audioChunkInterval = setInterval(() => {
+      // Send accumulated audio every 3 seconds as binary
+      this.audioChunkInterval = setInterval(async () => {
         if (audioChunks.length > 0 && this._isStreaming) {
           const blob = new Blob(audioChunks, { type: mimeType });
           audioChunks = [];
 
-          // Convert to base64 and send
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64 = (reader.result as string).split(",")[1];
-            if (base64 && this.relayWs?.readyState === WebSocket.OPEN) {
-              this.relayWs.send(
-                JSON.stringify({
-                  type: "AUDIO_CHUNK",
-                  audio: base64,
-                  mimeType,
-                })
-              );
-            }
-          };
-          reader.readAsDataURL(blob);
+          // Send as raw binary (ArrayBuffer) — ~33% smaller than Base64
+          if (this.relayWs?.readyState === WebSocket.OPEN) {
+            const arrayBuffer = await blob.arrayBuffer();
+            this.relayWs.send(arrayBuffer);
+          }
         }
       }, 3000);
 

@@ -141,6 +141,8 @@ export class RTMPStreamer extends EventEmitter {
         "-f", "s16le",         // signed 16-bit little-endian
         "-ar", "24000",        // 24kHz sample rate (Sarvam TTS default)
         "-ac", "1",            // mono
+        "-probesize", "32",    // Minimal input analysis (low-latency)
+        "-analyzeduration", "0", // Skip format analysis
         "-i", "pipe:0",        // read from stdin
 
         // Low-latency flags

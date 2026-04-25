@@ -133,6 +133,11 @@ async function processAudioChunk(
       sessionManager.recordChunkProcessed(userId, targetLanguages.length);
     }
 
+    // 5b. Record pipeline latency
+    if (result.timings?.total) {
+      sessionManager.recordLatency(userId, result.timings.total);
+    }
+
     if (result.error) {
       sessionManager.setError(userId, result.error);
     }
@@ -314,7 +319,18 @@ app.prepare().then(() => {
       }
     }, 1000);
 
-    ws.on("message", (rawMsg: any) => {
+    ws.on("message", (rawMsg: any, isBinary: boolean) => {
+      // Binary messages are raw audio chunks from the browser
+      if (isBinary) {
+        if (sessionManager.isActive(userId)) {
+          // Convert binary Buffer to base64 for the pipeline (internal format)
+          const audioBase64 = Buffer.from(rawMsg).toString("base64");
+          processAudioChunk(userId, audioBase64, ws);
+        }
+        return;
+      }
+
+      // Text messages are JSON commands
       try {
         const msg = JSON.parse(rawMsg.toString());
 
@@ -368,7 +384,7 @@ app.prepare().then(() => {
           });
 
         } else if (msg.type === "AUDIO_CHUNK") {
-          // Process audio chunk through pipeline
+          // Legacy: Base64 JSON audio chunks (backward compatibility)
           if (sessionManager.isActive(userId) && msg.audio) {
             processAudioChunk(userId, msg.audio, ws);
           }
