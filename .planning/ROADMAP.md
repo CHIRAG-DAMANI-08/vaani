@@ -20,5 +20,9 @@
 - [x] Server integration (GO_LIVE, pipeline callback, teardown)
 - [x] Dashboard RTMP status per channel
 
-## Phase 07: Optimization & Polish
-- Latency reduction, UI refinements, E2E tests.
+## Phase 07: Optimization & Polish ✅ (2026-04-25)
+- [x] Binary WebSocket audio transport (~33% bandwidth reduction)
+- [x] FFmpeg low-latency flags (-probesize 32, -analyzeduration 0)
+- [x] Real-time latency monitoring (rolling average)
+- [x] Sonner toast notifications (glassmorphism-styled)
+- [x] Pipeline shimmer animations

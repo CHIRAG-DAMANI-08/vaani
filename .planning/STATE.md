@@ -1,27 +1,25 @@
 # Project State
 
 ## Current Position
-- **Current Phase**: Phase 06: RTMP Output — **COMPLETE**
-- **Last Action**: Executed 06-01-PLAN.md — all 3 waves complete.
+- **Current Phase**: Phase 07: Optimization & Polish — **COMPLETE**
+- **Last Action**: Executed 07-01-PLAN.md — all 3 waves complete.
 
 ## Recent Progress
-- **Phase 06**: Implemented RTMP output streaming via FFmpeg tee muxer.
-  - Created `src/lib/rtmp-streamer.ts` (FFmpeg process manager)
-  - Integrated into `server.ts` (GO_LIVE, pipeline callback, teardown)
-  - Wired RTMP status to dashboard (`StatusRow`, `obs-relay-client`)
-- **Sprint 5**: Finished live pipeline integration (STT -> Translate -> TTS).
+- **Phase 07**: Binary WebSocket transport, FFmpeg low-latency, latency monitor, Sonner toasts, shimmer animations.
+- **Phase 06**: RTMP output streaming via FFmpeg tee muxer.
+- **Sprint 5**: Live pipeline integration (STT → Translate → TTS).
 
 ## Key Decisions
-- **Single FFmpeg process** per session using tee muxer for all destinations (vs. one process per channel).
-- **Graceful degradation**: If no RTMP configs exist, system operates in "pipeline-only" mode.
-- **Auto-restart**: FFmpeg restarts up to 3 times with exponential backoff on unexpected exits.
-- **`:onfail=ignore`**: One dead RTMP channel doesn't kill the entire stream.
+- **Binary WebSocket**: Audio chunks sent as raw ArrayBuffer (~33% bandwidth savings vs Base64).
+- **Rolling latency**: 10-chunk sliding window for smooth average display.
+- **Sonner toasts**: Replaced inline error boxes for a premium notification experience.
+- **Backward compatibility**: Legacy JSON AUDIO_CHUNK messages still accepted for testing.
 
 ## Pending Tasks
-- [ ] Production testing with real RTMP endpoints
-- [ ] Latency optimization (buffer tuning)
-- [ ] Phase 07: Polish & Optimization
+- [ ] Production E2E tests with real audio + RTMP endpoints
+- [ ] Binary transfer for pipeline results (currently still JSON — lower priority)
+- [ ] Mobile responsiveness audit
 
 ## Open Decisions
-- Binary audio transfer (ArrayBuffer) vs current Base64 — would reduce bandwidth ~33%.
-- Redis-backed session state for horizontal scaling.
+- Redis-backed session state for horizontal scaling
+- SRT protocol as alternative to RTMP for even lower latency
