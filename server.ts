@@ -215,7 +215,14 @@ app.prepare().then(() => {
     if (pathname === "/ws/relay") {
       try {
         const protocols = req.headers["sec-websocket-protocol"];
-        const sessionToken = Array.isArray(protocols) ? protocols[0] : (protocols?.split(",")[0]?.trim());
+        const protocolList = Array.isArray(protocols)
+          ? protocols
+          : (protocols?.split(",").map((p: string) => p.trim()) || []);
+        
+        // Find the JWT token — skip known protocol identifiers
+        const sessionToken = protocolList.find(
+          (p: string) => p !== "vaani-relay-v1" && p.includes(".")
+        );
 
         if (!sessionToken || !process.env.CLERK_SECRET_KEY) {
           console.log("WebSocket: Authentication missing");

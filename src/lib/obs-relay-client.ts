@@ -146,14 +146,33 @@ class OBSRelayManager {
 
   // ── Relay WebSocket ──
 
-  public initRelay() {
+  public async initRelay() {
     if (this.relayWs && (this.relayWs.readyState === WebSocket.OPEN || this.relayWs.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
+    // Fetch Clerk session token for WebSocket auth
+    let sessionToken = "";
+    try {
+      // Clerk exposes the session token via the __session cookie or getToken()
+      // We can fetch it from the Clerk-provided session endpoint
+      const Clerk = (window as any).Clerk;
+      if (Clerk?.session) {
+        sessionToken = await Clerk.session.getToken() || "";
+      }
+    } catch (e) {
+      console.warn("[relay] Could not get Clerk session token:", e);
+    }
+
     const host = window.location.host;
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    this.relayWs = new WebSocket(`${protocol}//${host}/ws/relay`, "vaani-relay-v1");
+    
+    // Send session token as first subprotocol (server reads it for JWT verification)
+    const protocols = sessionToken
+      ? [sessionToken, "vaani-relay-v1"]
+      : ["vaani-relay-v1"];
+    
+    this.relayWs = new WebSocket(`${protocol}//${host}/ws/relay`, protocols);
 
     this.relayWs.onmessage = async (event) => {
       try {
