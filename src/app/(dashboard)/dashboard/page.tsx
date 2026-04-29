@@ -10,9 +10,9 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { Session } from "@/lib/models/session";
 
 export default async function DashboardPage() {
-  const { userId } = auth();
+  const { userId } = await auth();
   let cumulative = { totalDurationMs: 0, totalCostINR: 0, totalChunks: 0 };
-  let pastSessions = [];
+  let pastSessions: any[] = [];
 
   if (userId) {
     try {
