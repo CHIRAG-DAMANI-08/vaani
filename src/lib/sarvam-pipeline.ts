@@ -51,15 +51,7 @@ export type PipelineResult = {
   };
 };
 
-// ── Language mapping ───────────────────────────────────────────────────────
 
-/** Map our channel language IDs to Sarvam BCP-47 codes */
-const LANG_MAP: Record<string, string> = {
-  hi: "hi-IN",
-  ta: "ta-IN",
-  te: "te-IN",
-  mr: "mr-IN",
-};
 
 // ── STT ────────────────────────────────────────────────────────────────────
 
