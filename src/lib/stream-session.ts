@@ -30,6 +30,8 @@ export type SessionData = {
   };
   /** Rolling transcript — last 15 lines */
   transcriptLines: string[];
+  /** Full transcript for DB persistence */
+  fullTranscript: string[];
   /** Stats */
   chunksProcessed: number;
   activeLanguages: string[];
@@ -41,6 +43,8 @@ export type SessionData = {
   avgLatencyMs: number;
   /** Latest error message */
   lastError: string | null;
+  /** Final duration when session is stopped */
+  durationMs?: number;
 };
 
 // Sarvam pricing approximation (per API call)
@@ -60,6 +64,7 @@ function createDefaultSession(userId: string): SessionData {
       stream: { status: "idle", value: "—" },
     },
     transcriptLines: [],
+    fullTranscript: [],
     chunksProcessed: 0,
     activeLanguages: [],
     estimatedCostINR: 0,
@@ -94,7 +99,10 @@ class StreamSessionManager {
 
   stopSession(userId: string): SessionData {
     const session = this.getSession(userId);
-    session.active = false;
+    if (session.active) {
+      session.durationMs = Date.now() - session.startedAt;
+      session.active = false;
+    }
     session.stages = {
       stt: { status: "idle", value: "—" },
       translate: { status: "idle", value: "—" },
@@ -122,6 +130,7 @@ class StreamSessionManager {
   addTranscriptLine(userId: string, line: string) {
     const session = this.getSession(userId);
     session.transcriptLines.push(line);
+    session.fullTranscript.push(line);
     // Keep last 15 lines
     if (session.transcriptLines.length > 15) {
       session.transcriptLines = session.transcriptLines.slice(-15);

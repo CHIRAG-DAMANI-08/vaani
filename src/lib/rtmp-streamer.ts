@@ -12,6 +12,7 @@
  */
 
 import { spawn, ChildProcess } from "child_process";
+import ffmpegPath from "ffmpeg-static";
 import { EventEmitter } from "events";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -80,17 +81,21 @@ export class RTMPStreamer extends EventEmitter {
   private ffmpegProcess: ChildProcess | null = null;
   private channels: ChannelRTMPConfig[] = [];
   private channelStatuses: Map<string, RTMPStreamStatus> = new Map();
+  private ingestUrl: string = "";
   private _active = false;
+  private _monoFallback = false;
   private totalBytesPushed = 0;
   private restartAttempts = 0;
   private maxRestartAttempts = 3;
+  private audioInterval: NodeJS.Timeout | null = null;
+  private audioQueue: Buffer[] = [];
 
   /**
    * Start the FFmpeg relay for the given channels.
    * Spawns a single FFmpeg process with a tee muxer that outputs
    * to all RTMP destinations simultaneously.
    */
-  start(channels: ChannelRTMPConfig[]): boolean {
+  start(channels: ChannelRTMPConfig[], ingestUrl: string): boolean {
     if (this._active) {
       console.warn("[rtmp] Streamer already active");
       return false;
@@ -102,8 +107,10 @@ export class RTMPStreamer extends EventEmitter {
     }
 
     this.channels = channels;
+    this.ingestUrl = ingestUrl;
     this.totalBytesPushed = 0;
     this.restartAttempts = 0;
+    this.audioQueue = [];
 
     // Initialize channel statuses
     for (const ch of channels) {
@@ -136,20 +143,46 @@ export class RTMPStreamer extends EventEmitter {
         })
         .join("|");
 
+      // Audio mixing strategy:
+      // - Stereo input (L/R panned in OBS): Use channelsplit + sidechain ducking
+      // - Mono fallback: Simply replace original audio with TTS (no ducking possible)
+      //
+      // We attempt the stereo filter_complex first. If FFmpeg fails with a channel
+      // layout error, the restart handler will retry with the simple fallback.
+      const stereoFilter = "[0:a]channelsplit=channel_layout=stereo[desktop][mic];[desktop][1:a]sidechaincompress=threshold=0.04:ratio=4:attack=50:release=1000[ducked_desktop];[ducked_desktop][1:a]amix=inputs=2:duration=first:dropout_transition=2[final_audio]";
+      const monoFallback = "[1:a]aresample=44100[final_audio]";
+
+      const useFilter = this._monoFallback ? monoFallback : stereoFilter;
+      const mapAudio = "[final_audio]";
+
       const ffmpegArgs = [
-        // Input: raw PCM from stdin
+        "-hide_banner", "-loglevel", "error",
+        "-probesize", "32", "-analyzeduration", "0",
+        
+        // Input 0: Original stream from OBS via local RTMP ingest
+        "-i", this.ingestUrl,
+
+        // Input 1: TTS audio from pipeline via stdin
         "-f", "s16le",         // signed 16-bit little-endian
         "-ar", "24000",        // 24kHz sample rate (Sarvam TTS default)
         "-ac", "1",            // mono
-        "-probesize", "32",    // Minimal input analysis (low-latency)
-        "-analyzeduration", "0", // Skip format analysis
         "-i", "pipe:0",        // read from stdin
 
         // Low-latency flags
         "-fflags", "nobuffer",
         "-flags", "low_delay",
 
-        // Output: AAC encoding
+        // Audio filter (stereo ducking or mono fallback)
+        "-filter_complex", useFilter,
+
+        // Mapping: Video from Input 0, Audio from filter
+        "-map", "0:v:0",
+        "-map", mapAudio,
+
+        // Video: Copy (no re-encode)
+        "-c:v", "copy",
+
+        // Audio: Encode TTS to AAC
         "-c:a", "aac",
         "-b:a", "128k",
         "-ar", "44100",        // Standard RTMP sample rate
@@ -161,12 +194,47 @@ export class RTMPStreamer extends EventEmitter {
       ];
 
       console.log(`[rtmp] Spawning FFmpeg with ${this.channels.length} destination(s)`);
-
-      this.ffmpegProcess = spawn("ffmpeg", ffmpegArgs, {
+      // @ts-ignore
+      const ffmpegExec = ffmpegPath || "ffmpeg";
+      this.ffmpegProcess = spawn(ffmpegExec, ffmpegArgs, {
         stdio: ["pipe", "pipe", "pipe"],
       });
 
       this._active = true;
+
+      // ── Audio Pump ──
+      // FFmpeg requires continuous audio input to mux with the video stream.
+      // If we don't supply data to stdin continuously, video muxing stalls and buffers overflow.
+      // Every 100ms, write 4800 bytes (100ms of 24kHz 16-bit mono)
+      this.audioInterval = setInterval(() => {
+        if (!this._active || !this.ffmpegProcess?.stdin?.writable) return;
+
+        const bytesToWrite = 4800;
+        const outputBuffer = Buffer.alloc(bytesToWrite, 0); // Fill with zeroes (silence) by default
+        let offset = 0;
+
+        while (offset < bytesToWrite && this.audioQueue.length > 0) {
+          const chunk = this.audioQueue[0];
+          const remainingSpace = bytesToWrite - offset;
+
+          if (chunk.length <= remainingSpace) {
+            chunk.copy(outputBuffer, offset);
+            offset += chunk.length;
+            this.audioQueue.shift();
+          } else {
+            chunk.subarray(0, remainingSpace).copy(outputBuffer, offset);
+            this.audioQueue[0] = chunk.subarray(remainingSpace);
+            offset += remainingSpace;
+          }
+        }
+
+        const written = this.ffmpegProcess.stdin.write(outputBuffer);
+        this.totalBytesPushed += bytesToWrite;
+
+        if (!written && this.audioQueue.length > 0) {
+           console.warn("[rtmp] FFmpeg stdin backpressure detected (audio queue size: " + this.audioQueue.length + ")");
+        }
+      }, 100);
 
       // ── Handle FFmpeg stdout (usually empty for audio) ──
       this.ffmpegProcess.stdout?.on("data", (data: Buffer) => {
@@ -177,6 +245,18 @@ export class RTMPStreamer extends EventEmitter {
       // ── Handle FFmpeg stderr (progress/errors) ──
       this.ffmpegProcess.stderr?.on("data", (data: Buffer) => {
         const msg = data.toString().trim();
+
+        // Detect mono input → channelsplit failure → auto-fallback
+        if (!this._monoFallback && (msg.includes("Channel layout change") || msg.includes("does not match specified channel layout") || msg.includes("channelsplit"))) {
+          console.warn(`[rtmp] Stereo filter failed (mono input detected). Restarting with mono fallback...`);
+          this._monoFallback = true;
+          this.restartAttempts = 0; // Reset so the fallback restart isn't counted
+          // We must ensure it restarts regardless of exit code.
+          (this as any)._fallbackRestarting = true;
+          // Kill current process — the close handler will restart with monoFallback=true
+          this.ffmpegProcess?.kill("SIGTERM");
+          return;
+        }
 
         // Detect connection-related errors
         if (msg.includes("Connection refused") || msg.includes("Connection timed out")) {
@@ -197,10 +277,15 @@ export class RTMPStreamer extends EventEmitter {
         console.log(`[rtmp] FFmpeg exited with code ${code}`);
         this._active = false;
         this.ffmpegProcess = null;
+        if (this.audioInterval) clearInterval(this.audioInterval);
 
         if (code !== 0 && code !== null) {
           // Attempt restart on unexpected exit
           this.attemptRestart();
+        } else if ((this as any)._fallbackRestarting) {
+          // Restart immediately because we killed it for fallback
+          (this as any)._fallbackRestarting = false;
+          this.spawnFFmpeg();
         } else {
           this.updateAllChannelStatuses("stopped");
           this.emit("stopped");
@@ -243,16 +328,8 @@ export class RTMPStreamer extends EventEmitter {
       const wavBuffer = Buffer.from(audioBase64, "base64");
       const pcmBuffer = stripWavHeader(wavBuffer);
 
-      if (pcmBuffer.length === 0) {
-        return false;
-      }
-
-      const written = this.ffmpegProcess.stdin.write(pcmBuffer);
-      this.totalBytesPushed += pcmBuffer.length;
-
-      if (!written) {
-        // Backpressure — FFmpeg can't keep up. This chunk may be dropped.
-        console.warn("[rtmp] FFmpeg stdin backpressure detected");
+      if (pcmBuffer.length > 0) {
+        this.audioQueue.push(pcmBuffer);
       }
 
       return true;
@@ -271,6 +348,7 @@ export class RTMPStreamer extends EventEmitter {
 
     console.log(`[rtmp] Stopping FFmpeg (${this.totalBytesPushed} bytes pushed total)`);
     this._active = false;
+    if (this.audioInterval) clearInterval(this.audioInterval);
 
     try {
       // Close stdin to signal end-of-input

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
+import { LANGUAGE_REGISTRY } from "@/lib/language-registry";
 
 type ChannelStatus = "live" | "ready" | "error" | "setup";
 
@@ -15,12 +16,12 @@ type ChannelData = {
   configured: boolean;
 };
 
-const SUPPORTED_LANGUAGES = [
-  { id: "hi", name: "Hindi", script: "हिन्दी", color: "var(--lang-hindi)" },
-  { id: "ta", name: "Tamil", script: "தமிழ்", color: "var(--lang-tamil)" },
-  { id: "te", name: "Telugu", script: "తెలుగు", color: "var(--lang-telugu)" },
-  { id: "mr", name: "Marathi", script: "मराठी", color: "var(--lang-marathi)" },
-];
+const SUPPORTED_LANGUAGES = LANGUAGE_REGISTRY.map(l => ({
+  id: l.id,
+  name: l.name,
+  script: l.nativeName,
+  color: `var(--lang-${l.name.toLowerCase()}, #F5821F)`
+}));
 
 function StatusBadge({ status }: { status: ChannelStatus }) {
   const config = {

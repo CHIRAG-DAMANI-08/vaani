@@ -5,15 +5,17 @@
   "scripts": {
     "dev": "tsx --env-file=.env server.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_ENV=production tsx server.ts",
     "lint": "eslint"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.8",
+    "ffmpeg-static": "^5.3.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.7.0",
     "mongoose": "^9.3.3",
     "next": "16.2.2",
+    "node-media-server": "^4.2.4",
     "obs-websocket-js": "^5.0.8",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/node-media-server": "^2.3.7",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",

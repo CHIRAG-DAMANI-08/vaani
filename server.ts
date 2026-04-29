@@ -6,14 +6,39 @@ import { verifyToken } from "@clerk/backend";
 import { connectToDatabase } from "./src/lib/mongodb";
 import { User } from "./src/lib/models/user";
 import { Channel } from "./src/lib/models/channel";
+import { Session } from "./src/lib/models/session";
 import crypto from "crypto";
 import { runPipeline } from "./src/lib/sarvam-pipeline";
 import { sessionManager } from "./src/lib/stream-session";
 import { RTMPStreamer, type ChannelRTMPConfig, type RTMPStreamerSnapshot } from "./src/lib/rtmp-streamer";
+import NodeMediaServer from "node-media-server";
+import { spawn, ChildProcess } from "child_process";
+import ffmpegPath from "ffmpeg-static";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
 const port = parseInt(process.env.PORT || "3000", 10);
+
+// Validate environment variables
+const REQUIRED_ENV_VARS = [
+  "CLERK_SECRET_KEY",
+  "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+  "MONGODB_URI",
+  "ENCRYPTION_KEY"
+];
+
+for (const envVar of REQUIRED_ENV_VARS) {
+  if (!process.env[envVar]) {
+    console.error(`[critical] Missing required environment variable: ${envVar}`);
+    process.exit(1);
+  }
+}
+
+if (process.env.ENCRYPTION_KEY?.length !== 64) {
+  console.error("[critical] ENCRYPTION_KEY must be a 64-character hex string.");
+  process.exit(1);
+}
+
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
@@ -55,141 +80,376 @@ const globalAny: any = global;
 export const activeObsStatus = globalAny.activeObsStatus || new Map<string, { obsConnected: boolean; lastSeen: number }>();
 globalAny.activeObsStatus = activeObsStatus;
 
-// ── Pipeline Processing Queue ──────────────────────────────────────────────
+const userTranslationSources = new Map<string, string>();
+const userTTSSettings = new Map<string, { speaker: string; pace: number; sourceLang: string }>();
 
-/** Process audio chunk through the full Sarvam pipeline and push results back */
-async function processAudioChunk(
-  userId: string,
-  audioBase64: string,
-  ws: WebSocket
-) {
-  if (!sessionManager.isActive(userId)) return;
+// Active audio extractor FFmpeg processes (Native RTMP)
+const activeAudioExtractors = new Map<string, ChildProcess>();
 
+// ── Per-User Pipeline Queue ────────────────────────────────────────────────
+// Prevents parallel chunk processing which causes out-of-order translations
+// and Sarvam API rate limit exhaustion.
+
+type UserPipelineState = {
+  queue: Array<{ audioBase64: string; seq: number }>;
+  processing: boolean;
+  nextSeq: number;
+  // Cached per-session to avoid DB query every 3 seconds
+  cachedApiKey: string | null;
+  cachedLanguages: string[] | null;
+  cacheTimestamp: number;
+};
+
+const userPipelineQueues = new Map<string, UserPipelineState>();
+const CACHE_TTL_MS = 60_000; // Re-fetch from DB every 60s
+const MAX_QUEUE_SIZE = 10; // Drop oldest chunks if queue backs up
+
+function getPipelineState(userId: string): UserPipelineState {
+  if (!userPipelineQueues.has(userId)) {
+    userPipelineQueues.set(userId, {
+      queue: [],
+      processing: false,
+      nextSeq: 0,
+      cachedApiKey: null,
+      cachedLanguages: null,
+      cacheTimestamp: 0,
+    });
+  }
+  return userPipelineQueues.get(userId)!;
+}
+
+function clearPipelineState(userId: string) {
+  userPipelineQueues.delete(userId);
+}
+
+async function saveSessionToDb(userId: string, sessionData: any) {
   try {
-    // 1. Fetch user's Sarvam key
-    await connectToDatabase();
-    const user = await User.findOne({ clerkId: userId }).lean();
-    if (!user?.sarvamKeyEnc) {
-      sendToClient(ws, {
-        type: "PIPELINE_ERROR",
-        error: "No Sarvam API key configured",
+    if (sessionData.durationMs && sessionData.durationMs > 0) {
+      await connectToDatabase();
+      await Session.create({
+        clerkId: userId,
+        startedAt: new Date(sessionData.startedAt),
+        endedAt: new Date(sessionData.startedAt + sessionData.durationMs),
+        durationMs: sessionData.durationMs,
+        activeLanguages: sessionData.activeLanguages,
+        chunksProcessed: sessionData.chunksProcessed,
+        estimatedCostINR: sessionData.estimatedCostINR,
+        transcript: sessionData.fullTranscript,
       });
-      return;
+      console.log(`[db] Saved session for user ${userId}`);
     }
-
-    const apiKey = decryptValue(user.sarvamKeyEnc);
-    if (!apiKey) {
-      sendToClient(ws, {
-        type: "PIPELINE_ERROR",
-        error: "Failed to decrypt Sarvam API key",
-      });
-      return;
-    }
-
-    // 2. Get active channel languages
-    const channels = await Channel.find({
-      clerkId: userId,
-      enabled: true,
-    }).lean();
-    const targetLanguages = channels.map((ch: any) => ch.languageId);
-
-    if (targetLanguages.length === 0) {
-      sendToClient(ws, {
-        type: "PIPELINE_ERROR",
-        error: "No enabled channels. Enable at least one language channel.",
-      });
-      return;
-    }
-
-    // 3. Convert base64 audio to Buffer
-    const audioBuffer = Buffer.from(audioBase64, "base64");
-
-    // 4. Run the pipeline with real-time stage updates
-    const result = await runPipeline(
-      audioBuffer,
-      apiKey,
-      targetLanguages,
-      (stage, status, data) => {
-        // Push stage updates to client in real-time
-        sessionManager.updateStage(
-          userId,
-          stage as any,
-          status,
-          data?.time ? `${(data.time / 1000).toFixed(1)}s` : undefined
-        );
-
-        sendToClient(ws, {
-          type: "PIPELINE_STAGE_UPDATE",
-          stage,
-          status,
-          data,
-        });
-      }
-    );
-
-    // 5. Record stats
-    if (result.stt?.transcript) {
-      sessionManager.addTranscriptLine(userId, result.stt.transcript);
-      sessionManager.recordChunkProcessed(userId, targetLanguages.length);
-    }
-
-    // 5b. Record pipeline latency
-    if (result.timings?.total) {
-      sessionManager.recordLatency(userId, result.timings.total);
-    }
-
-    if (result.error) {
-      sessionManager.setError(userId, result.error);
-    }
-
-    // 6. Push TTS audio to RTMP streamer
-    const streamer = activeStreamers.get(userId);
-    if (streamer?.active && result.ttsOutputs.length > 0) {
-      for (const ttsOutput of result.ttsOutputs) {
-        if (ttsOutput.audioBase64) {
-          streamer.pushAudio(ttsOutput.audioBase64);
-        }
-      }
-      // Update stream stage with RTMP status
-      sessionManager.updateStage(userId, "stream", "done", `${result.ttsOutputs.length} ch`);
-    }
-
-    // 7. Push full result to client
-    sendToClient(ws, {
-      type: "PIPELINE_RESULT",
-      transcript: result.stt?.transcript || "",
-      translations: result.translations.map((t) => ({
-        language: t.targetLanguage,
-        text: t.translatedText,
-      })),
-      ttsCount: result.ttsOutputs.length,
-      timings: result.timings,
-      error: result.error,
-    });
-
-    // 8. Push updated session snapshot (with RTMP status)
-    const rtmpSnapshot = activeStreamers.get(userId)?.getSnapshot();
-    sendToClient(ws, {
-      type: "SESSION_SNAPSHOT",
-      ...sessionManager.getSnapshot(userId),
-      rtmp: rtmpSnapshot || { active: false, channels: [] },
-    });
   } catch (err) {
-    console.error(`[pipeline] Failed for user ${userId}:`, err);
-    sessionManager.setError(
-      userId,
-      err instanceof Error ? err.message : "Pipeline failed"
-    );
-    sendToClient(ws, {
-      type: "PIPELINE_ERROR",
-      error: err instanceof Error ? err.message : "Pipeline processing failed",
-    });
+    console.error(`[db] Error saving session for user ${userId}:`, err);
   }
 }
 
-function sendToClient(ws: WebSocket, msg: any) {
-  if (ws.readyState === WebSocket.OPEN) {
+// ── Pipeline Processing Loop ───────────────────────────────────────────────
+
+/** Enqueue an audio chunk for serial processing. Never processes in parallel. */
+function processAudioChunk(
+  userId: string,
+  audioBase64: string,
+  ws: WebSocket | undefined
+) {
+  if (!sessionManager.isActive(userId)) return;
+
+  const state = getPipelineState(userId);
+  const seq = state.nextSeq++;
+
+  // Backpressure: if the queue is full, drop the oldest chunk
+  if (state.queue.length >= MAX_QUEUE_SIZE) {
+    const dropped = state.queue.shift();
+    console.warn(`[pipeline] Queue full for ${userId}, dropped chunk seq=${dropped?.seq}`);
+  }
+
+  state.queue.push({ audioBase64, seq });
+
+  // If not already processing, kick off the drain loop
+  if (!state.processing) {
+    drainPipelineQueue(userId, ws);
+  }
+}
+
+/** Serial drain loop — processes one chunk at a time, in order. */
+async function drainPipelineQueue(userId: string, ws: WebSocket | undefined) {
+  const state = getPipelineState(userId);
+  if (state.processing) return;
+  state.processing = true;
+
+  while (state.queue.length > 0 && sessionManager.isActive(userId)) {
+    const item = state.queue.shift()!;
+    try {
+      await executeChunkPipeline(userId, item.audioBase64, item.seq, ws);
+    } catch (err) {
+      console.error(`[pipeline] Chunk seq=${item.seq} failed for ${userId}:`, err);
+      sessionManager.setError(userId, err instanceof Error ? err.message : "Pipeline failed");
+      sendToClient(ws, {
+        type: "PIPELINE_ERROR",
+        error: err instanceof Error ? err.message : "Pipeline processing failed",
+      });
+    }
+  }
+
+  state.processing = false;
+}
+
+/** Resolve API key + languages from cache or DB. */
+async function getCachedCredentials(userId: string): Promise<{ apiKey: string; languages: string[] } | null> {
+  const state = getPipelineState(userId);
+  const now = Date.now();
+
+  if (state.cachedApiKey && state.cachedLanguages && (now - state.cacheTimestamp) < CACHE_TTL_MS) {
+    return { apiKey: state.cachedApiKey, languages: state.cachedLanguages };
+  }
+
+  // Cache miss — hit DB
+  await connectToDatabase();
+  const user = await User.findOne({ clerkId: userId }).lean();
+  if (!user?.sarvamKeyEnc) return null;
+
+  const apiKey = decryptValue(user.sarvamKeyEnc);
+  if (!apiKey) return null;
+
+  const channels = await Channel.find({ clerkId: userId, enabled: true }).lean();
+  const languages = channels.map((ch: any) => ch.languageId);
+  if (languages.length === 0) return null;
+
+  // Update cache
+  state.cachedApiKey = apiKey;
+  state.cachedLanguages = languages;
+  state.cacheTimestamp = now;
+
+  return { apiKey, languages };
+}
+
+/** Execute a single chunk through STT → Translate → TTS. Always called serially. */
+async function executeChunkPipeline(
+  userId: string,
+  audioBase64: string,
+  seq: number,
+  ws: WebSocket | undefined
+) {
+  // 1. Resolve credentials (cached)
+  const creds = await getCachedCredentials(userId);
+  if (!creds) {
+    sendToClient(ws, {
+      type: "PIPELINE_ERROR",
+      error: "No Sarvam API key or channels configured.",
+    });
+    return;
+  }
+
+  // 2. Convert base64 audio to Buffer
+  const audioBuffer = Buffer.from(audioBase64, "base64");
+
+  // 3. Run the pipeline with real-time stage updates
+  const ttsOpts = userTTSSettings.get(userId) || { speaker: "shubh", pace: 1.0, sourceLang: "auto" };
+  const pipelineOpts = {
+    speaker: ttsOpts.speaker,
+    pace: ttsOpts.pace,
+    sourceLang: ttsOpts.sourceLang !== "auto" ? ttsOpts.sourceLang : undefined,
+  };
+
+  const result = await runPipeline(
+    audioBuffer,
+    creds.apiKey,
+    creds.languages,
+    (stage, status, data) => {
+      sessionManager.updateStage(
+        userId,
+        stage as any,
+        status,
+        data?.time ? `${(data.time / 1000).toFixed(1)}s` : undefined
+      );
+      sendToClient(ws, {
+        type: "PIPELINE_STAGE_UPDATE",
+        stage,
+        status,
+        data,
+      });
+    },
+    pipelineOpts
+  );
+
+  // 4. Record stats
+  if (result.stt?.transcript) {
+    sessionManager.addTranscriptLine(userId, result.stt.transcript);
+    sessionManager.recordChunkProcessed(userId, creds.languages.length);
+  }
+
+  if (result.timings?.total) {
+    sessionManager.recordLatency(userId, result.timings.total);
+  }
+
+  if (result.error) {
+    sessionManager.setError(userId, result.error);
+  }
+
+  // 5. Push TTS audio to RTMP streamer
+  const streamer = activeStreamers.get(userId);
+  if (streamer?.active && result.ttsOutputs.length > 0) {
+    for (const ttsOutput of result.ttsOutputs) {
+      if (ttsOutput.audioBase64) {
+        streamer.pushAudio(ttsOutput.audioBase64);
+      }
+    }
+    sessionManager.updateStage(userId, "stream", "done", `${result.ttsOutputs.length} ch`);
+  }
+
+  // 6. Push full result to client (with sequence number for ordering)
+  sendToClient(ws, {
+    type: "PIPELINE_RESULT",
+    seq,
+    transcript: result.stt?.transcript || "",
+    translations: result.translations.map((t) => ({
+      language: t.targetLanguage,
+      text: t.translatedText,
+    })),
+    ttsCount: result.ttsOutputs.length,
+    timings: result.timings,
+    error: result.error,
+  });
+
+  // 7. Push updated session snapshot
+  const rtmpSnapshot = activeStreamers.get(userId)?.getSnapshot();
+  sendToClient(ws, {
+    type: "SESSION_SNAPSHOT",
+    ...sessionManager.getSnapshot(userId),
+    rtmp: rtmpSnapshot || { active: false, channels: [] },
+  });
+}
+
+function sendToClient(ws: WebSocket | undefined, msg: any) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(msg));
+  }
+}
+
+// ── Audio Extraction for Native RTMP ───────────────────────────────────────
+
+// Utility to generate a valid WAV header for raw PCM data
+function createWavHeader(dataLength: number, sampleRate: number, numChannels: number, bitsPerSample: number) {
+  const buffer = Buffer.alloc(44);
+  const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+  const blockAlign = (numChannels * bitsPerSample) / 8;
+
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataLength, 4);
+  buffer.write('WAVE', 8);
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(numChannels, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(byteRate, 28);
+  buffer.writeUInt16LE(blockAlign, 32);
+  buffer.writeUInt16LE(bitsPerSample, 34);
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataLength, 40);
+
+  return buffer;
+}
+
+function startAudioExtraction(userId: string) {
+  if (activeAudioExtractors.has(userId)) return;
+
+  console.log(`[rtmp-ingest] Starting audio extraction for user ${userId}`);
+  const rtmpUrl = `rtmp://localhost:1935/live/${userId}`;
+  
+  const sourcePref = userTranslationSources.get(userId) || "mic_only";
+  let channelMapArgs = ["-ac", "1"]; // mixed
+  if (sourcePref === "mic_only") {
+    channelMapArgs = ["-af", "pan=mono|c0=c1"]; // Extract Right channel
+  } else if (sourcePref === "desktop_only") {
+    channelMapArgs = ["-af", "pan=mono|c0=c0"]; // Extract Left channel
+  }
+
+  // @ts-ignore
+  const ffmpegExec = ffmpegPath || "ffmpeg";
+  const ffmpeg = spawn(ffmpegExec, [
+    "-hide_banner", "-loglevel", "error",
+    "-i", rtmpUrl,
+    "-vn", // No video
+    "-f", "s16le", // Raw PCM 16-bit little-endian
+    "-ar", "16000", // 16 kHz (expected by Sarvam)
+    ...channelMapArgs,
+    "pipe:1" // Output to stdout
+  ]);
+
+  let chunkBuffer = Buffer.alloc(0);
+  // Increase chunk size to 3 seconds. 1 second is too short for Sarvam's saarika model
+  // to establish context, leading to aggressive hallucination of random words.
+  const CHUNK_SIZE = 32000 * 3; // 3 seconds of 16kHz 16-bit mono
+
+  ffmpeg.stdout.on("data", (data) => {
+    chunkBuffer = Buffer.concat([chunkBuffer, data]);
+    while (chunkBuffer.length >= CHUNK_SIZE) {
+      const chunk = chunkBuffer.subarray(0, CHUNK_SIZE);
+      chunkBuffer = chunkBuffer.subarray(CHUNK_SIZE);
+      
+      // Calculate RMS and Zero-Crossing Rate to detect silence and non-speech (Voice Activity Detection)
+      let sumSquares = 0;
+      let zeroCrossings = 0;
+      let prevSample = 0;
+      for (let i = 0; i < chunk.length; i += 2) {
+        const sample = chunk.readInt16LE(i);
+        sumSquares += sample * sample;
+        if (i > 0) {
+           if ((sample >= 0 && prevSample < 0) || (sample < 0 && prevSample >= 0)) {
+               zeroCrossings++;
+           }
+        }
+        prevSample = sample;
+      }
+      const rms = Math.sqrt(sumSquares / (chunk.length / 2));
+
+      // Determine VAD decision
+      const isSpeech = rms >= 150 && zeroCrossings >= 100;
+      const vadStatus = rms < 150 ? "silent" : zeroCrossings < 100 ? "noise" : "speech";
+
+      // Send audio level + VAD to frontend for visualization
+      const ws = activeSessions.get(userId);
+      sendToClient(ws, {
+        type: "AUDIO_LEVEL",
+        rms: Math.round(rms),
+        zcr: zeroCrossings,
+        vadStatus, // "speech" | "silent" | "noise"
+        bufferPercent: Math.min(100, Math.round((chunkBuffer.length / CHUNK_SIZE) * 100)),
+      });
+
+      // If audio is below RMS threshold or has too few zero crossings, skip STT to prevent hallucination
+      if (!isSpeech) {
+        continue;
+      }
+
+      // Wrap raw PCM chunk with a proper WAV header so Sarvam API can read it
+      const wavHeader = createWavHeader(chunk.length, 16000, 1, 16);
+      const wavBuffer = Buffer.concat([wavHeader, chunk]);
+
+      // Convert WAV to base64 for the pipeline
+      const audioBase64 = wavBuffer.toString("base64");
+      processAudioChunk(userId, audioBase64, ws);
+    }
+  });
+
+  ffmpeg.stderr.on("data", (data) => {
+    console.error(`[rtmp-ingest] Audio extraction error: ${data}`);
+  });
+
+  ffmpeg.on("close", (code) => {
+    console.log(`[rtmp-ingest] Audio extraction stopped for user ${userId} with code ${code}`);
+    activeAudioExtractors.delete(userId);
+  });
+
+  activeAudioExtractors.set(userId, ffmpeg);
+}
+
+function stopAudioExtraction(userId: string) {
+  const ffmpeg = activeAudioExtractors.get(userId);
+  if (ffmpeg) {
+    console.log(`[rtmp-ingest] Stopping audio extraction for user ${userId}`);
+    ffmpeg.kill("SIGKILL");
+    activeAudioExtractors.delete(userId);
   }
 }
 
@@ -204,6 +464,93 @@ app.prepare().then(() => {
       console.error("Error occurred handling", req.url, err);
       res.statusCode = 500;
       res.end("internal server error");
+    }
+  });
+
+  // ── RTMP Ingest Server Setup ──
+  const nmsConfig = {
+    rtmp: {
+      port: 1935,
+      chunk_size: 60000,
+      gop_cache: true,
+      ping: 30,
+      ping_timeout: 60
+    }
+  };
+  const nms = new NodeMediaServer(nmsConfig);
+  nms.run();
+
+  nms.on('postPublish', (...args: any[]) => {
+    console.log(`[rtmp-ingest] postPublish raw args length:`, args.length);
+    console.log(`[rtmp-ingest] postPublish arg[0] type:`, typeof args[0]);
+    if (typeof args[0] === 'string') {
+        console.log(`[rtmp-ingest] postPublish arg[0] value:`, args[0]);
+    } else {
+        console.log(`[rtmp-ingest] postPublish arg[0] keys:`, Object.keys(args[0]));
+    }
+    console.log(`[rtmp-ingest] postPublish arg[1]:`, args[1]);
+    
+    // We will extract the stream key reliably
+    let streamKey = '';
+    if (typeof args[1] === 'string') {
+        streamKey = args[1].split('/').pop() || '';
+    } else if (args[0] && typeof args[0] === 'string') {
+        streamKey = args[0];
+    } else if (args[1] && args[1].streamPath) {
+        streamKey = args[1].streamPath.split('/').pop() || '';
+    } else if (args[0] && typeof args[0].id === 'string') {
+        // NMS v4 session object?
+        // the property for stream name is often 'streamName' or 'StreamPath'
+        if (args[0].streamName) streamKey = args[0].streamName;
+        else if (args[0].client && args[0].client.streamName) streamKey = args[0].client.streamName;
+        else streamKey = args[0].id; // fallback
+    }
+
+    console.log(`[rtmp-ingest] EXTRACTED KEY: ${streamKey}`);
+    const userId = streamKey;
+    if (userId) {
+      // Find the dashboard WebSocket connection
+      const ws = activeSessions.get(userId);
+      handleGoLive(userId, ws);
+      startAudioExtraction(userId);
+      if (!ws) {
+         console.log(`[rtmp-ingest] No active dashboard WS for user ${userId}, but session started in background.`);
+      }
+    }
+  });
+
+  nms.on('donePublish', (...args: any[]) => {
+    let streamKey = '';
+    if (typeof args[1] === 'string') {
+        streamKey = args[1].split('/').pop() || '';
+    } else if (args[0] && typeof args[0] === 'string') {
+        streamKey = args[0];
+    } else if (args[1] && args[1].streamPath) {
+        streamKey = args[1].streamPath.split('/').pop() || '';
+    } else if (args[0] && typeof args[0].id === 'string') {
+        if (args[0].streamName) streamKey = args[0].streamName;
+        else if (args[0].client && args[0].client.streamName) streamKey = args[0].client.streamName;
+        else streamKey = args[0].id;
+    }
+
+    console.log(`[rtmp-ingest] donePublish EXTRACTED KEY: ${streamKey}`);
+    const userId = streamKey;
+    if (userId) {
+      stopAudioExtraction(userId);
+      const ws = activeSessions.get(userId);
+      if (ws && sessionManager.isActive(userId)) {
+        const streamer = activeStreamers.get(userId);
+        if (streamer) {
+          streamer.stop();
+          activeStreamers.delete(userId);
+        }
+        const session = sessionManager.stopSession(userId);
+        sendToClient(ws, {
+          type: "SESSION_STOPPED",
+          reason: "OBS stream ended",
+          ...sessionManager.getSnapshot(userId),
+        });
+      }
     }
   });
 
@@ -361,6 +708,8 @@ app.prepare().then(() => {
               activeStreamers.delete(userId);
             }
             const session = sessionManager.stopSession(userId);
+            saveSessionToDb(userId, session);
+            clearPipelineState(userId);
             sendToClient(ws, {
               type: "SESSION_STOPPED",
               reason: "OBS disconnected",
@@ -384,6 +733,8 @@ app.prepare().then(() => {
             activeStreamers.delete(userId);
           }
           const session = sessionManager.stopSession(userId);
+          saveSessionToDb(userId, session);
+          clearPipelineState(userId);
           sendToClient(ws, {
             type: "SESSION_STOPPED",
             reason: "User stopped",
@@ -398,6 +749,28 @@ app.prepare().then(() => {
 
         } else if (msg.type === "OBS_EVENT") {
           console.log(`[relay] OBS Event for ${userId}:`, msg.event);
+
+        } else if (msg.type === "SET_TRANSLATION_SOURCE") {
+          console.log(`[relay] Setting translation source for ${userId} to ${msg.source}`);
+          userTranslationSources.set(userId, msg.source);
+          
+          // If already streaming, hot-reload the audio extractor so settings apply immediately
+          if (activeAudioExtractors.has(userId)) {
+            console.log(`[relay] Hot-reloading audio extraction for user ${userId}`);
+            stopAudioExtraction(userId);
+            setTimeout(() => {
+              if (sessionManager.isActive(userId)) {
+                startAudioExtraction(userId);
+              }
+            }, 1000); // 1s delay to let previous FFmpeg die cleanly
+          }
+        } else if (msg.type === "SET_TTS_SETTINGS") {
+          console.log(`[relay] Setting TTS settings for ${userId}: speaker=${msg.speaker}, pace=${msg.pace}, sourceLang=${msg.sourceLang}`);
+          userTTSSettings.set(userId, {
+            speaker: msg.speaker || "shubh",
+            pace: msg.pace || 1.0,
+            sourceLang: msg.sourceLang || "auto",
+          });
         }
       } catch (e) {
         // Ignore invalid parses
@@ -418,7 +791,9 @@ app.prepare().then(() => {
         activeStreamers.delete(userId);
       }
       if (sessionManager.isActive(userId)) {
-        sessionManager.stopSession(userId);
+        const session = sessionManager.stopSession(userId);
+        saveSessionToDb(userId, session);
+        clearPipelineState(userId);
       }
     });
     
@@ -430,11 +805,51 @@ app.prepare().then(() => {
   server.listen(port, () => {
     console.log(`> Ready on http://${hostname}:${port}`);
   });
+
+  // ── Graceful Shutdown ──────────────────────────────────────────────────────
+  function gracefulShutdown() {
+    console.log("\n[server] Shutting down gracefully...");
+    
+    // 1. Stop all active RTMP streamers (FFmpeg processes)
+    for (const [userId, streamer] of activeStreamers.entries()) {
+      console.log(`[server] Stopping RTMP streamer for user ${userId}`);
+      streamer.stop();
+    }
+    
+    // 2. Stop all active audio extractors (FFmpeg processes)
+    for (const [userId, process] of activeAudioExtractors.entries()) {
+      console.log(`[server] Stopping audio extractor for user ${userId}`);
+      process.kill("SIGTERM");
+    }
+
+    // 3. Stop Node Media Server
+    if (nms) {
+      console.log("[server] Stopping Node Media Server...");
+      nms.stop();
+    }
+
+    // 4. Close servers
+    wss.close(() => {
+      server.close(() => {
+        console.log("[server] HTTP and WS servers closed.");
+        process.exit(0);
+      });
+    });
+
+    // Force exit after 10s
+    setTimeout(() => {
+      console.error("[server] Forced shutdown after 10s");
+      process.exit(1);
+    }, 10000);
+  }
+
+  process.on("SIGTERM", gracefulShutdown);
+  process.on("SIGINT", gracefulShutdown);
 });
 
 // ── Go Live Handler ────────────────────────────────────────────────────────
 
-async function handleGoLive(userId: string, ws: WebSocket) {
+async function handleGoLive(userId: string, ws?: WebSocket) {
   try {
     await connectToDatabase();
 
@@ -512,7 +927,8 @@ async function handleGoLive(userId: string, ws: WebSocket) {
         });
       });
 
-      const started = streamer.start(rtmpConfigs);
+      const ingestUrl = `rtmp://localhost:1935/live/${userId}`;
+      const started = streamer.start(rtmpConfigs, ingestUrl);
       if (started) {
         activeStreamers.set(userId, streamer);
         console.log(`[relay] RTMP streamer started for user ${userId} with ${rtmpConfigs.length} destination(s)`);

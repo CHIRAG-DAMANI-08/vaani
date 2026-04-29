@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Clock, IndianRupee, Layers, Globe, Zap } from "lucide-react";
+import { Tooltip } from "@/app/components/Tooltip";
 
 export function SessionStats() {
   const [duration, setDuration] = useState("—");
@@ -82,7 +83,19 @@ export function SessionStats() {
                 <s.icon className="w-5 h-5" style={{ color: s.color }} />
              </div>
 
-             <p className="text-[12px] font-dm-sans font-bold text-gray-500 uppercase tracking-[0.1em] mb-1">{s.label}</p>
+             {s.label === "Chunks" || s.label === "Latency" ? (
+               <Tooltip 
+                 content={s.label === "Chunks" 
+                   ? "Audio is processed in 3-second blocks. This is the total number of blocks sent for translation." 
+                   : "The time it takes for audio to be transcribed, translated, converted to speech, and pushed to your destination."}
+                 position="bottom"
+               >
+                 <p className="text-[12px] font-dm-sans font-bold text-gray-500 uppercase tracking-[0.1em] mb-1 cursor-help border-b border-dashed border-gray-300 w-fit">{s.label}</p>
+               </Tooltip>
+             ) : (
+               <p className="text-[12px] font-dm-sans font-bold text-gray-500 uppercase tracking-[0.1em] mb-1">{s.label}</p>
+             )}
+             
              <p className={`text-[28px] font-syne font-bold text-gray-900 ${isStreaming && s.value !== '—' ? '' : 'text-gray-300'}`}>
                {s.value}
              </p>

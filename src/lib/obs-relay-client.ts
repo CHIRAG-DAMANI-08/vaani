@@ -31,6 +31,13 @@ export type PipelineResult = {
   error: string | null;
 };
 
+export type AudioLevel = {
+  rms: number;
+  zcr: number;
+  vadStatus: "speech" | "silent" | "noise";
+  bufferPercent: number;
+};
+
 class OBSRelayManager {
   private static instance: OBSRelayManager;
   private relayWs: WebSocket | null = null;
@@ -51,6 +58,8 @@ class OBSRelayManager {
   
   // ── Session snapshot ──
   private _sessionSnapshot: SessionSnapshot | null = null;
+  private _rtmpSnapshot: RTMPSnapshot | null = null;
+  private _translationSource: string = "mic_only";
   private snapshotListeners: Set<(snapshot: SessionSnapshot) => void> = new Set();
 
   // ── Pipeline events ──
@@ -59,8 +68,11 @@ class OBSRelayManager {
   private errorListeners: Set<(error: string) => void> = new Set();
 
   // ── RTMP status ──
-  private _rtmpSnapshot: RTMPSnapshot | null = null;
   private rtmpListeners: Set<(snapshot: RTMPSnapshot) => void> = new Set();
+
+  // ── Audio level ──
+  private _audioLevel: AudioLevel = { rms: 0, zcr: 0, vadStatus: "silent", bufferPercent: 0 };
+  private audioLevelListeners: Set<(level: AudioLevel) => void> = new Set();
 
   // ── Audio capture ──
   private mediaRecorder: MediaRecorder | null = null;
@@ -118,11 +130,18 @@ class OBSRelayManager {
     return () => this.rtmpListeners.delete(listener);
   }
 
+  public subscribeAudioLevel(listener: (level: AudioLevel) => void) {
+    this.audioLevelListeners.add(listener);
+    return () => this.audioLevelListeners.delete(listener);
+  }
+
   // ── Getters ──
 
   get isStreaming() { return this._isStreaming; }
   get sessionSnapshot() { return this._sessionSnapshot; }
   get rtmpSnapshot() { return this._rtmpSnapshot; }
+  get translationSource() { return this._translationSource; }
+  get audioLevel() { return this._audioLevel; }
 
   // ── Notifications ──
 
@@ -151,7 +170,6 @@ class OBSRelayManager {
       return;
     }
 
-    // Fetch Clerk session token for WebSocket auth
     let sessionToken = "";
     try {
       // Clerk exposes the session token via the __session cookie or getToken()
@@ -164,6 +182,12 @@ class OBSRelayManager {
       console.warn("[relay] Could not get Clerk session token:", e);
     }
 
+    if (!sessionToken) {
+      console.log("[relay] Clerk session not ready, retrying initRelay in 500ms");
+      setTimeout(() => this.initRelay(), 500);
+      return;
+    }
+
     const host = window.location.host;
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     
@@ -174,12 +198,25 @@ class OBSRelayManager {
     
     this.relayWs = new WebSocket(`${protocol}//${host}/ws/relay`, protocols);
 
+    this.relayWs.onopen = () => {
+      console.log("[relay] Relay WS connected");
+      this.retryCount = 0;
+    };
+
     this.relayWs.onmessage = async (event) => {
       try {
         const msg = JSON.parse(event.data);
 
         if (msg.type === "PING") {
           this.relayWs?.send(JSON.stringify({ type: "PONG" }));
+
+          // Send TTS settings once connection is established
+          try {
+            const speaker = localStorage.getItem("vaani_tts_speaker") || "shubh";
+            const pace = parseFloat(localStorage.getItem("vaani_tts_pace") || "1.0");
+            const sourceLang = localStorage.getItem("vaani_source_lang") || "auto";
+            this.setTTSSettings({ speaker, pace, sourceLang });
+          } catch (e) {}
 
         } else if (msg.type === "OBS_CREDENTIALS") {
           this.credentials = {
@@ -201,8 +238,6 @@ class OBSRelayManager {
             this._rtmpSnapshot = msg.rtmp;
             this.rtmpListeners.forEach((l) => l(msg.rtmp));
           }
-          // Start capturing audio
-          this.startAudioCapture();
 
         } else if (msg.type === "SESSION_STOPPED") {
           this.setStreaming(false);
@@ -211,7 +246,6 @@ class OBSRelayManager {
           // Clear RTMP status
           this._rtmpSnapshot = { active: false, channels: [] };
           this.rtmpListeners.forEach((l) => l(this._rtmpSnapshot!));
-          this.stopAudioCapture();
 
         } else if (msg.type === "SESSION_SNAPSHOT") {
           this._sessionSnapshot = msg;
@@ -240,6 +274,15 @@ class OBSRelayManager {
 
         } else if (msg.type === "RTMP_CHANNEL_ERROR") {
           this.errorListeners.forEach((l) => l(`RTMP Channel ${msg.channelId}: ${msg.error}`));
+
+        } else if (msg.type === "AUDIO_LEVEL") {
+          this._audioLevel = {
+            rms: msg.rms,
+            zcr: msg.zcr,
+            vadStatus: msg.vadStatus,
+            bufferPercent: msg.bufferPercent,
+          };
+          this.audioLevelListeners.forEach((l) => l(this._audioLevel));
         }
       } catch (e) {
         console.error("Relay WS message error:", e);
@@ -248,10 +291,19 @@ class OBSRelayManager {
 
     this.relayWs.onclose = () => {
       this.relayWs = null;
-      // If streaming was active, stop capture
-      if (this._isStreaming) {
-        this.setStreaming(false);
-        this.stopAudioCapture();
+      console.log("[relay] Relay WS closed");
+      
+      // Auto-reconnect with backoff
+      if (this.retryCount < this.maxRetries) {
+        const delay = this.backoffDelays[this.retryCount] || 30000;
+        this.retryCount++;
+        console.log(`[relay] Retrying relay connection in ${delay}ms (attempt ${this.retryCount}/${this.maxRetries})`);
+        setTimeout(() => this.initRelay(), delay);
+      } else {
+        console.error("[relay] Max relay retries reached");
+        if (this._isStreaming) {
+          this.setStreaming(false);
+        }
       }
     };
   }
@@ -312,108 +364,22 @@ class OBSRelayManager {
 
   // ── Go Live / Stop Stream ──
 
-  public goLive() {
-    if (!this.relayWs || this.relayWs.readyState !== WebSocket.OPEN) {
-      this.errorListeners.forEach((l) => l("Not connected to server"));
-      return;
-    }
-    this.relayWs.send(JSON.stringify({ type: "GO_LIVE" }));
-  }
-
   public stopStream() {
     if (!this.relayWs || this.relayWs.readyState !== WebSocket.OPEN) return;
     this.relayWs.send(JSON.stringify({ type: "STOP_STREAM" }));
-    this.stopAudioCapture();
   }
 
-  // ── Audio Capture ──
-  // Captures microphone audio (or system audio if browser supports it)
-  // and sends chunks to the server every 3 seconds for pipeline processing.
-
-  private async startAudioCapture() {
-    try {
-      // Try to get display media with audio (system audio for streaming)
-      // Fall back to microphone if display media is not available
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getDisplayMedia({
-          audio: true,
-          video: false,
-        });
-      } catch {
-        // Fallback to microphone
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            channelCount: 1,
-            sampleRate: 16000,
-            echoCancellation: true,
-            noiseSuppression: true,
-          },
-        });
-      }
-
-      // Use webm/opus which is well supported
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : "audio/webm";
-
-      this.mediaRecorder = new MediaRecorder(stream, {
-        mimeType,
-        audioBitsPerSecond: 32000,
-      });
-
-      let audioChunks: Blob[] = [];
-
-      this.mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunks.push(event.data);
-        }
-      };
-
-      // Send accumulated audio every 3 seconds as binary
-      this.audioChunkInterval = setInterval(async () => {
-        if (audioChunks.length > 0 && this._isStreaming) {
-          const blob = new Blob(audioChunks, { type: mimeType });
-          audioChunks = [];
-
-          // Send as raw binary (ArrayBuffer) — ~33% smaller than Base64
-          if (this.relayWs?.readyState === WebSocket.OPEN) {
-            const arrayBuffer = await blob.arrayBuffer();
-            this.relayWs.send(arrayBuffer);
-          }
-        }
-      }, 3000);
-
-      // Start recording in 3-second slices
-      this.mediaRecorder.start(1000); // collect data every 1s, send every 3s
-      console.log("[audio] Audio capture started");
-    } catch (err) {
-      console.error("[audio] Failed to start audio capture:", err);
-      this.errorListeners.forEach((l) =>
-        l("Failed to capture audio. Please allow microphone access.")
-      );
-    }
-  }
-
-  private stopAudioCapture() {
-    if (this.audioChunkInterval) {
-      clearInterval(this.audioChunkInterval);
-      this.audioChunkInterval = null;
-    }
-    if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
-      try {
-        this.mediaRecorder.stop();
-        // Stop all tracks
-        this.mediaRecorder.stream.getTracks().forEach((t) => t.stop());
-      } catch (e) {
-        // ignore
-      }
-      this.mediaRecorder = null;
-    }
-    console.log("[audio] Audio capture stopped");
-  }
 
   // ── Relay Communication ──
+
+  public setTranslationSource(source: string) {
+    this._translationSource = source;
+    this.notifyRelay({ type: "SET_TRANSLATION_SOURCE", source });
+  }
+
+  public setTTSSettings(settings: { speaker: string; pace: number; sourceLang: string }) {
+    this.notifyRelay({ type: "SET_TTS_SETTINGS", ...settings });
+  }
 
   private notifyRelay(msg: any) {
     if (this.relayWs && this.relayWs.readyState === WebSocket.OPEN) {
@@ -424,7 +390,6 @@ class OBSRelayManager {
   public cleanup() {
     this.credentials = null;
     this.setState("unconfigured");
-    this.stopAudioCapture();
     if (this.retryTimeout) clearTimeout(this.retryTimeout);
     if (this.obsClient) {
       try { this.obsClient.disconnect(); } catch (e) {}

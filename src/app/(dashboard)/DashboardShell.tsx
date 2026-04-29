@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AudioMeter } from "./dashboard/AudioMeter";
+import { PreflightModal } from "@/app/components/PreflightModal";
+import { OnboardingWizard } from "@/app/components/OnboardingWizard";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton, useUser } from "@clerk/nextjs";
@@ -60,7 +63,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   // Key and OBS status for Go Live button
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [hasOBS, setHasOBS] = useState<boolean | null>(null);
-  const [showGoLiveTooltip, setShowGoLiveTooltip] = useState(false);
+  const [showPreflight, setShowPreflight] = useState(false);
 
   useEffect(() => {
     async function fetchStatuses() {
@@ -113,22 +116,19 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     });
   }, [pathname]);
 
-  const goLiveDisabled = hasKey === false || hasOBS === false;
-
-  const handleGoLive = async () => {
-    if (isStreaming) {
-      // Stop stream
-      const mod = await import("@/lib/obs-relay-client");
-      mod.obsRelayManager.stopStream();
-    } else {
-      // Go live
-      const mod = await import("@/lib/obs-relay-client");
-      mod.obsRelayManager.goLive();
-    }
-  };
-
   return (
     <div className="relative h-[100dvh] w-screen overflow-hidden bg-[#F5F2ED] text-gray-900 font-sans">
+      <OnboardingWizard />
+      {showPreflight && (
+        <PreflightModal 
+          onClose={() => setShowPreflight(false)} 
+          onStart={() => {
+            setShowPreflight(false);
+            // In a fully robust system, this might trigger the actual RTMP pipeline start.
+            // Right now, the backend auto-starts when OBS streams, so this is just a readiness check.
+          }} 
+        />
+      )}
       {/* ── Vibrant Floating Mesh Background ── */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         <div 
@@ -224,51 +224,26 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 
 
 
-                {/* Go Live / Stop Button with disabled state */}
-                <div className="relative"
-                  onMouseEnter={() => goLiveDisabled && !isStreaming && setShowGoLiveTooltip(true)}
-                  onMouseLeave={() => setShowGoLiveTooltip(false)}
-                >
-                  {/* Tooltip */}
-                  {showGoLiveTooltip && goLiveDisabled && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-[220px] bg-white/95 backdrop-blur-xl rounded-[14px] p-3 shadow-[0_8px_24px_rgba(0,0,0,0.08)] border border-white z-30 animate-[fade-in_150ms_ease]">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-[#F59E0B] shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-[12px] font-dm-sans text-gray-600 leading-[1.5]">You need a Sarvam API key and an OBS Connection to go live.</p>
-                          <Link href="/settings" className="text-[11px] font-dm-sans font-semibold text-[#F5821F] hover:text-[#E8690A] transition-colors mt-1 inline-block">Configure Settings →</Link>
-                        </div>
-                      </div>
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] w-3 h-3 bg-white/95 border-r border-b border-white rotate-45" />
-                    </div>
-                  )}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  {/* Audio Level Meter */}
+                  <AudioMeter />
 
                   {isStreaming ? (
-                    <button
-                      onClick={handleGoLive}
-                      className="w-full relative overflow-hidden group rounded-[16px] font-medium shadow-[0_4px_12px_rgba(239,68,68,0.2)] transition-all bg-gradient-to-r from-[#EF4444] to-[#DC2626] text-white active:scale-[0.98]"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-[#DC2626] to-[#B91C1C] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="relative px-5 py-[14px] flex items-center justify-center gap-2">
-                        <Square className="w-[16px] h-[16px] fill-current" />
-                        <span>Stop Stream</span>
-                      </div>
-                    </button>
+                    <div className="mt-4 py-2 px-3 bg-[#EF4444]/10 rounded-lg text-center">
+                       <span className="text-[#EF4444] text-[13px] font-medium flex items-center justify-center gap-2">
+                         <span className="relative flex h-[6px] w-[6px]">
+                            <span className="animate-[live-pulse_1.8s_ease-in-out_infinite] absolute inline-flex h-full w-full rounded-full bg-[#EF4444] opacity-75" />
+                            <span className="relative inline-flex rounded-full h-[6px] w-[6px] bg-[#EF4444]" />
+                          </span>
+                         Live via OBS
+                       </span>
+                    </div>
                   ) : (
-                    <button
-                      disabled={goLiveDisabled}
-                      onClick={handleGoLive}
-                      className={`w-full relative overflow-hidden group rounded-[16px] font-medium shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-all ${
-                        goLiveDisabled
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
-                          : 'bg-gradient-to-r from-gray-900 to-gray-800 text-white active:scale-[0.98]'
-                      }`}
+                    <button 
+                      onClick={() => setShowPreflight(true)}
+                      className="mt-4 w-full py-2 px-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg text-center transition-colors shadow-sm cursor-pointer"
                     >
-                       {!goLiveDisabled && <div className="absolute inset-0 bg-gradient-to-r from-[#F5821F] to-[#E8690A] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />}
-                       <div className="relative px-5 py-[14px] flex items-center justify-center gap-2">
-                         <Play className="w-[18px] h-[18px] fill-current" />
-                         <span>Go Live</span>
-                       </div>
+                       <span className="text-gray-700 text-[12px] font-bold">Check Readiness</span>
                     </button>
                   )}
                 </div>
@@ -344,20 +319,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <Radio className="w-[22px] h-[22px]" />
         </Link>
 
-        {/* Go Live Center Action */}
+        {/* Preflight Center Action */}
         <button 
-          onClick={handleGoLive}
-          className={`relative transform -translate-y-6 w-[56px] h-[56px] rounded-[20px] shadow-[0_12px_24px_rgba(245,130,31,0.35)] flex items-center justify-center text-white ${
-            isStreaming 
-              ? 'bg-gradient-to-br from-[#EF4444] to-[#DC2626]' 
-              : 'bg-gradient-to-br from-[#F5821F] to-[#E8690A]'
-          }`}
+          onClick={() => setShowPreflight(true)}
+          className="relative transform -translate-y-6 w-[56px] h-[56px] rounded-[20px] shadow-[0_12px_24px_rgba(245,130,31,0.35)] flex items-center justify-center text-white bg-gradient-to-br from-[#F5821F] to-[#E8690A] hover:scale-105 transition-transform"
         >
-          {isStreaming ? (
-            <Square className="w-[20px] h-[20px] fill-current" />
-          ) : (
-            <Play className="w-[22px] h-[22px] fill-current ml-1" />
-          )}
+           <Radio className="w-[24px] h-[24px] fill-current" />
         </button>
 
         <Link href="/settings" className={`p-3 rounded-[16px] transition-all ${pathname === '/settings' ? 'bg-[#FFF2E5] text-[#F5821F]' : 'text-gray-400'}`}>
