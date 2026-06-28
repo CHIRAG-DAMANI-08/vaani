@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "vaani",
+  "project_id": "8cbbc42f-068b-444d-a697-333230bd21db"
+}
