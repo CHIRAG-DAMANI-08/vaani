@@ -1,5 +1,6 @@
 "use client";
 import { AuthenticateWithRedirectCallback } from "@clerk/nextjs";
+import { logger } from "@/lib/logger";
 
 export default function SSOCallbackPage() {
   return (

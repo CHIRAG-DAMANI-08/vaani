@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/logger";
 import { X, KeyRound, Radio, Zap, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
+import { toast } from "sonner";
 
 export function OnboardingWizard() {
   const { user } = useUser();
@@ -71,9 +73,13 @@ export function OnboardingWizard() {
       });
       if (res.ok) {
         setStep(2);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to save API key. Please try again.");
       }
     } catch (e) {
-      console.error(e);
+      logger.error({ err: e }, "Onboarding step failed");
+      toast.error("Failed to save API key. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -83,7 +89,7 @@ export function OnboardingWizard() {
     setIsSaving(true);
     try {
       // Create a default Hindi channel
-      await fetch("/api/channels", {
+      const res = await fetch("/api/channels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -94,9 +100,15 @@ export function OnboardingWizard() {
           streamKey,
         }),
       });
-      setStep(3);
+      if (res.ok) {
+        setStep(3);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to save channel. Please try again.");
+      }
     } catch (e) {
-      console.error(e);
+      logger.error({ err: e }, "Onboarding step failed");
+      toast.error("Failed to save channel. Please try again.");
     } finally {
       setIsSaving(false);
     }

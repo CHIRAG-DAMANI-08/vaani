@@ -8,6 +8,8 @@
  * Network errors / 5xx / timeout means Sarvam is unreachable.
  */
 
+import { logger } from "./logger";
+
 const SARVAM_TRANSLATE_URL = "https://api.sarvam.ai/translate";
 const TIMEOUT_MS = 5000;
 
@@ -63,9 +65,9 @@ export async function validateSarvamKey(
 
     // AbortError = timeout, other = network failures
     if (error instanceof Error && error.name === "AbortError") {
-      console.error("[sarvam] Validation call timed out after 5s");
+      logger.warn("Sarvam validation timeout");
     } else {
-      console.error("[sarvam] Validation call failed:", error);
+      logger.error({ err: error }, "Sarvam validation failed");
     }
 
     return { valid: false, error: "SARVAM_UNREACHABLE" };

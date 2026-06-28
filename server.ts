@@ -7,13 +7,14 @@ import { connectToDatabase } from "./src/lib/mongodb";
 import { User } from "./src/lib/models/user";
 import { Channel } from "./src/lib/models/channel";
 import { Session } from "./src/lib/models/session";
-import crypto from "crypto";
 import { runPipeline } from "./src/lib/sarvam-pipeline";
 import { sessionManager } from "./src/lib/stream-session";
 import { RTMPStreamer, type ChannelRTMPConfig, type RTMPStreamerSnapshot } from "./src/lib/rtmp-streamer";
 import NodeMediaServer from "node-media-server";
 import { spawn, ChildProcess } from "child_process";
 import ffmpegPath from "ffmpeg-static";
+import { logger } from "./src/lib/logger";
+import { decryptKey } from "./src/lib/encryption";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
@@ -29,41 +30,26 @@ const REQUIRED_ENV_VARS = [
 
 for (const envVar of REQUIRED_ENV_VARS) {
   if (!process.env[envVar]) {
-    console.error(`[critical] Missing required environment variable: ${envVar}`);
+    logger.fatal({ envVar }, "Missing required environment variable");
     process.exit(1);
   }
 }
 
 if (process.env.ENCRYPTION_KEY?.length !== 64) {
-  console.error("[critical] ENCRYPTION_KEY must be a 64-character hex string.");
+  logger.fatal("ENCRYPTION_KEY must be a 64-character hex string");
   process.exit(1);
 }
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-// Helper to decrypt password / sarvam key
-function decryptValue(encryptedStr: string): string | null {
+// Helper to decrypt password / sarvam key — delegates to shared encryption module
+function decryptValue(encryptedStr: string | null | undefined): string | null {
   if (!encryptedStr) return null;
-  const keyHex = process.env.ENCRYPTION_KEY;
-  if (!keyHex || keyHex.length !== 64) {
-    console.error("Missing or invalid ENCRYPTION_KEY string.");
-    return null;
-  }
   try {
-    const key = Buffer.from(keyHex, "hex");
-    const [ivB64, authTagB64, ciphertextB64] = encryptedStr.split(":");
-    const iv = Buffer.from(ivB64, "base64");
-    const authTag = Buffer.from(authTagB64, "base64");
-    const ciphertext = Buffer.from(ciphertextB64, "base64");
-
-    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-    decipher.setAuthTag(authTag);
-    let plaintext = decipher.update(ciphertext, undefined, "utf8");
-    plaintext += decipher.final("utf8");
-    return plaintext;
+    return decryptKey(encryptedStr);
   } catch (err) {
-    console.error("Failed to decrypt value:", err);
+    logger.error({ err }, "Failed to decrypt value");
     return null;
   }
 }
@@ -136,10 +122,10 @@ async function saveSessionToDb(userId: string, sessionData: any) {
         estimatedCostINR: sessionData.estimatedCostINR,
         transcript: sessionData.fullTranscript,
       });
-      console.log(`[db] Saved session for user ${userId}`);
+      logger.info({ userId }, "Session saved to DB");
     }
   } catch (err) {
-    console.error(`[db] Error saving session for user ${userId}:`, err);
+    logger.error({ err, userId }, "Failed to save session to DB");
   }
 }
 
@@ -159,7 +145,7 @@ function processAudioChunk(
   // Backpressure: if the queue is full, drop the oldest chunk
   if (state.queue.length >= MAX_QUEUE_SIZE) {
     const dropped = state.queue.shift();
-    console.warn(`[pipeline] Queue full for ${userId}, dropped chunk seq=${dropped?.seq}`);
+    logger.warn({ userId, droppedSeq: dropped?.seq }, "Pipeline queue full, dropped chunk");
   }
 
   state.queue.push({ audioBase64, seq });
@@ -181,7 +167,7 @@ async function drainPipelineQueue(userId: string, ws: WebSocket | undefined) {
     try {
       await executeChunkPipeline(userId, item.audioBase64, item.seq, ws);
     } catch (err) {
-      console.error(`[pipeline] Chunk seq=${item.seq} failed for ${userId}:`, err);
+      logger.error({ err, userId, seq: item.seq }, "Chunk pipeline failed");
       sessionManager.setError(userId, err instanceof Error ? err.message : "Pipeline failed");
       sendToClient(ws, {
         type: "PIPELINE_ERROR",
@@ -229,6 +215,9 @@ async function executeChunkPipeline(
   seq: number,
   ws: WebSocket | undefined
 ) {
+  const chunkLogger = logger.child({ userId, seq });
+  chunkLogger.debug({ audioBytes: Buffer.from(audioBase64, "base64").length }, "Chunk pipeline started");
+
   // 1. Resolve credentials (cached)
   const creds = await getCachedCredentials(userId);
   if (!creds) {
@@ -310,7 +299,19 @@ async function executeChunkPipeline(
     error: result.error,
   });
 
-  // 7. Push updated session snapshot
+  // 7. Log pipeline completion
+  chunkLogger.info(
+    {
+      transcriptLen: result.stt?.transcript?.length || 0,
+      translations: result.translations.length,
+      ttsCount: result.ttsOutputs.length,
+      totalMs: result.timings?.total || 0,
+      error: result.error,
+    },
+    "Chunk pipeline completed"
+  );
+
+  // 8. Push updated session snapshot
   const rtmpSnapshot = activeStreamers.get(userId)?.getSnapshot();
   sendToClient(ws, {
     type: "SESSION_SNAPSHOT",
@@ -353,7 +354,7 @@ function createWavHeader(dataLength: number, sampleRate: number, numChannels: nu
 function startAudioExtraction(userId: string) {
   if (activeAudioExtractors.has(userId)) return;
 
-  console.log(`[rtmp-ingest] Starting audio extraction for user ${userId}`);
+  logger.info({ userId }, "Audio extraction starting");
   const rtmpUrl = `rtmp://localhost:1935/live/${userId}`;
   
   const sourcePref = userTranslationSources.get(userId) || "mic_only";
@@ -433,11 +434,11 @@ function startAudioExtraction(userId: string) {
   });
 
   ffmpeg.stderr.on("data", (data) => {
-    console.error(`[rtmp-ingest] Audio extraction error: ${data}`);
+    logger.error({ userId, error: data.toString() }, "Audio extraction error");
   });
 
   ffmpeg.on("close", (code) => {
-    console.log(`[rtmp-ingest] Audio extraction stopped for user ${userId} with code ${code}`);
+    logger.info({ userId, code }, "Audio extraction stopped");
     activeAudioExtractors.delete(userId);
   });
 
@@ -447,8 +448,16 @@ function startAudioExtraction(userId: string) {
 function stopAudioExtraction(userId: string) {
   const ffmpeg = activeAudioExtractors.get(userId);
   if (ffmpeg) {
-    console.log(`[rtmp-ingest] Stopping audio extraction for user ${userId}`);
-    ffmpeg.kill("SIGKILL");
+    logger.info({ userId }, "Audio extraction stopping");
+    ffmpeg.kill("SIGTERM");
+    // SIGKILL fallback after 3s if SIGTERM doesn't work
+    setTimeout(() => {
+      try {
+        ffmpeg.kill("SIGKILL");
+      } catch {
+        // already dead
+      }
+    }, 3000);
     activeAudioExtractors.delete(userId);
   }
 }
@@ -461,7 +470,7 @@ app.prepare().then(() => {
       const parsedUrl = parse(req.url!, true);
       await handle(req, res, parsedUrl);
     } catch (err) {
-      console.error("Error occurred handling", req.url, err);
+      logger.error({ err, url: req.url }, "Request handler error");
       res.statusCode = 500;
       res.end("internal server error");
     }
@@ -481,14 +490,7 @@ app.prepare().then(() => {
   nms.run();
 
   nms.on('postPublish', (...args: any[]) => {
-    console.log(`[rtmp-ingest] postPublish raw args length:`, args.length);
-    console.log(`[rtmp-ingest] postPublish arg[0] type:`, typeof args[0]);
-    if (typeof args[0] === 'string') {
-        console.log(`[rtmp-ingest] postPublish arg[0] value:`, args[0]);
-    } else {
-        console.log(`[rtmp-ingest] postPublish arg[0] keys:`, Object.keys(args[0]));
-    }
-    console.log(`[rtmp-ingest] postPublish arg[1]:`, args[1]);
+    logger.debug({ argCount: args.length, argTypes: args.map((a: any) => typeof a) }, "postPublish event");
     
     // We will extract the stream key reliably
     let streamKey = '';
@@ -506,7 +508,7 @@ app.prepare().then(() => {
         else streamKey = args[0].id; // fallback
     }
 
-    console.log(`[rtmp-ingest] EXTRACTED KEY: ${streamKey}`);
+    logger.debug({ streamKey }, "Extracted stream key");
     const userId = streamKey;
     if (userId) {
       // Find the dashboard WebSocket connection
@@ -514,7 +516,7 @@ app.prepare().then(() => {
       handleGoLive(userId, ws);
       startAudioExtraction(userId);
       if (!ws) {
-         console.log(`[rtmp-ingest] No active dashboard WS for user ${userId}, but session started in background.`);
+         logger.warn({ userId }, "No active dashboard WS, session started in background");
       }
     }
   });
@@ -533,7 +535,7 @@ app.prepare().then(() => {
         else streamKey = args[0].id;
     }
 
-    console.log(`[rtmp-ingest] donePublish EXTRACTED KEY: ${streamKey}`);
+    logger.debug({ streamKey }, "donePublish event");
     const userId = streamKey;
     if (userId) {
       stopAudioExtraction(userId);
@@ -554,12 +556,25 @@ app.prepare().then(() => {
     }
   });
 
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 1 * 1024 * 1024 });
 
   server.on("upgrade", async (req, socket, head) => {
     const { pathname } = parse(req.url || "/", true);
 
     if (pathname === "/ws/relay") {
+      // Origin validation
+      const origin = req.headers.origin;
+      const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
+        "http://localhost:3000",
+        "https://localhost:3000",
+      ];
+      if (origin && !allowedOrigins.includes(origin)) {
+        logger.warn({ origin }, "WebSocket rejected: disallowed origin");
+        socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+
       try {
         const protocols = req.headers["sec-websocket-protocol"];
         const protocolList = Array.isArray(protocols)
@@ -572,7 +587,7 @@ app.prepare().then(() => {
         );
 
         if (!sessionToken || !process.env.CLERK_SECRET_KEY) {
-          console.log("WebSocket: Authentication missing");
+          logger.warn("WebSocket auth missing");
           socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
           socket.destroy();
           return;
@@ -581,10 +596,11 @@ app.prepare().then(() => {
         try {
           const payload = await verifyToken(sessionToken, {
             secretKey: process.env.CLERK_SECRET_KEY,
+            audience: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
           });
 
           if (!payload) {
-            console.log("WebSocket: Invalid session token");
+            logger.warn("WebSocket invalid session token");
             socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
             socket.destroy();
             return;
@@ -596,12 +612,12 @@ app.prepare().then(() => {
             wss.emit("connection", ws, req, userId);
           });
         } catch (authError) {
-          console.error("WebSocket auth error:", authError);
+          logger.error({ err: authError }, "WebSocket auth error");
           socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
           socket.destroy();
         }
       } catch (err) {
-        console.error("Upgrade handler exception:", err);
+        logger.error({ err }, "Upgrade handler exception");
         socket.destroy();
       }
     } 
@@ -611,7 +627,7 @@ app.prepare().then(() => {
 
   wss.on("connection", async (ws: WebSocket, req: any, userId: string) => {
     activeSessions.set(userId, ws);
-    console.log(`[relay] WS connected for user ${userId}`);
+    logger.info({ userId }, "WS connected");
 
     // Send credentials to client
     try {
@@ -640,7 +656,7 @@ app.prepare().then(() => {
         });
       }
     } catch (e) {
-      console.error("[relay] Failed to fetch credentials:", e);
+      logger.error({ err: e, userId }, "Failed to fetch OBS credentials");
     }
 
     // Ping loop
@@ -656,7 +672,7 @@ app.prepare().then(() => {
     const pongCheckInterval = setInterval(() => {
       if (Date.now() - lastPong > 45000) {
         // Disconnect if no PONG within timeout window
-        console.log(`[relay] PONG timeout for user ${userId}`);
+        logger.warn({ userId }, "PONG timeout");
         ws.close(1001, "PONG_TIMEOUT");
       }
     }, 5000);
@@ -693,11 +709,11 @@ app.prepare().then(() => {
 
         } else if (msg.type === "OBS_CONNECTED") {
           activeObsStatus.set(userId, { obsConnected: true, lastSeen: Date.now() });
-          console.log(`[relay] OBS connected mapped for user ${userId}`);
+          logger.info({ userId }, "OBS connected");
 
         } else if (msg.type === "OBS_DISCONNECTED") {
           activeObsStatus.set(userId, { obsConnected: false, lastSeen: Date.now() });
-          console.log(`[relay] OBS disconnected mapped for user ${userId} - reason: ${msg.reason}`);
+          logger.info({ userId, reason: msg.reason }, "OBS disconnected");
 
           // Auto-stop session if OBS disconnects during streaming
           if (sessionManager.isActive(userId)) {
@@ -715,17 +731,17 @@ app.prepare().then(() => {
               reason: "OBS disconnected",
               ...sessionManager.getSnapshot(userId),
             });
-            console.log(`[relay] Auto-stopped session for user ${userId} due to OBS disconnect`);
+            logger.info({ userId, reason: "OBS disconnected" }, "Session auto-stopped");
           }
 
         } else if (msg.type === "GO_LIVE") {
           // Start a new streaming session
-          console.log(`[relay] GO_LIVE requested by user ${userId}`);
+          logger.info({ userId }, "GO_LIVE requested");
           handleGoLive(userId, ws);
 
         } else if (msg.type === "STOP_STREAM") {
           // Stop the streaming session
-          console.log(`[relay] STOP_STREAM requested by user ${userId}`);
+          logger.info({ userId }, "STOP_STREAM requested");
           // Stop RTMP streamer
           const streamer = activeStreamers.get(userId);
           if (streamer) {
@@ -748,15 +764,15 @@ app.prepare().then(() => {
           }
 
         } else if (msg.type === "OBS_EVENT") {
-          console.log(`[relay] OBS Event for ${userId}:`, msg.event);
+          logger.debug({ userId, event: msg.event }, "OBS event");
 
         } else if (msg.type === "SET_TRANSLATION_SOURCE") {
-          console.log(`[relay] Setting translation source for ${userId} to ${msg.source}`);
+          logger.info({ userId, source: msg.source }, "Translation source set");
           userTranslationSources.set(userId, msg.source);
           
           // If already streaming, hot-reload the audio extractor so settings apply immediately
           if (activeAudioExtractors.has(userId)) {
-            console.log(`[relay] Hot-reloading audio extraction for user ${userId}`);
+            logger.info({ userId }, "Audio extraction hot-reload");
             stopAudioExtraction(userId);
             setTimeout(() => {
               if (sessionManager.isActive(userId)) {
@@ -765,7 +781,7 @@ app.prepare().then(() => {
             }, 1000); // 1s delay to let previous FFmpeg die cleanly
           }
         } else if (msg.type === "SET_TTS_SETTINGS") {
-          console.log(`[relay] Setting TTS settings for ${userId}: speaker=${msg.speaker}, pace=${msg.pace}, sourceLang=${msg.sourceLang}`);
+          logger.debug({ userId, speaker: msg.speaker, pace: msg.pace, sourceLang: msg.sourceLang }, "TTS settings set");
           userTTSSettings.set(userId, {
             speaker: msg.speaker || "shubh",
             pace: msg.pace || 1.0,
@@ -778,7 +794,7 @@ app.prepare().then(() => {
     });
 
     ws.on("close", () => {
-      console.log(`[relay] WS closed for user ${userId}`);
+      logger.info({ userId }, "WS closed");
       activeSessions.delete(userId);
       clearInterval(pingInterval);
       clearInterval(pongCheckInterval);
@@ -798,47 +814,81 @@ app.prepare().then(() => {
     });
     
     ws.on("error", (err: Error) => {
-      console.error(`[relay] WS error for user ${userId}:`, err);
+      logger.error({ err, userId }, "WS error");
     });
   });
 
   server.listen(port, () => {
-    console.log(`> Ready on http://${hostname}:${port}`);
+    logger.info({ hostname, port }, "Server ready");
   });
+
+  // ── Periodic Stale State Cleanup ──────────────────────────────────────────
+  const STALE_TTL_MS = 60 * 60 * 1000; // 1 hour
+  const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  const staleCleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [userId, ws] of activeSessions.entries()) {
+      if (ws.readyState !== WebSocket.OPEN) {
+        activeSessions.delete(userId);
+        logger.debug({ userId }, "Cleaned up stale session");
+      }
+    }
+    for (const [userId] of activeStreamers.entries()) {
+      if (!sessionManager.isActive(userId)) {
+        activeStreamers.delete(userId);
+        logger.debug({ userId }, "Cleaned up stale streamer");
+      }
+    }
+    for (const [userId, state] of userPipelineQueues.entries()) {
+      if (!state.processing && state.queue.length === 0 && (now - state.cacheTimestamp) > STALE_TTL_MS) {
+        userPipelineQueues.delete(userId);
+      }
+    }
+  }, CLEANUP_INTERVAL_MS);
+  // Don't keep the event loop alive just for cleanup
+  staleCleanupInterval.unref();
 
   // ── Graceful Shutdown ──────────────────────────────────────────────────────
   function gracefulShutdown() {
-    console.log("\n[server] Shutting down gracefully...");
+    logger.info("Graceful shutdown initiated");
     
     // 1. Stop all active RTMP streamers (FFmpeg processes)
     for (const [userId, streamer] of activeStreamers.entries()) {
-      console.log(`[server] Stopping RTMP streamer for user ${userId}`);
+      logger.info({ userId }, "Stopping RTMP streamer");
       streamer.stop();
     }
     
     // 2. Stop all active audio extractors (FFmpeg processes)
     for (const [userId, process] of activeAudioExtractors.entries()) {
-      console.log(`[server] Stopping audio extractor for user ${userId}`);
+      logger.info({ userId }, "Stopping audio extractor");
       process.kill("SIGTERM");
     }
 
     // 3. Stop Node Media Server
     if (nms) {
-      console.log("[server] Stopping Node Media Server...");
-      nms.stop();
+      logger.info("Stopping NMS");
+      try {
+        if (typeof (nms as any).stop === "function") {
+          (nms as any).stop();
+        } else if (typeof (nms as any).close === "function") {
+          (nms as any).close();
+        }
+      } catch {
+        // NMS v4 doesn't always expose a clean stop method
+      }
     }
 
     // 4. Close servers
     wss.close(() => {
       server.close(() => {
-        console.log("[server] HTTP and WS servers closed.");
+        logger.info("Servers closed");
         process.exit(0);
       });
     });
 
     // Force exit after 10s
     setTimeout(() => {
-      console.error("[server] Forced shutdown after 10s");
+      logger.error("Forced shutdown after timeout");
       process.exit(1);
     }, 10000);
   }
@@ -908,7 +958,7 @@ async function handleGoLive(userId: string, ws?: WebSocket) {
 
       // Listen for streamer events
       streamer.on("error", (err: Error) => {
-        console.error(`[relay] RTMP error for user ${userId}:`, err.message);
+        logger.error({ err: err.message, userId }, "RTMP streamer error");
         sendToClient(ws, {
           type: "RTMP_ERROR",
           error: err.message,
@@ -916,7 +966,7 @@ async function handleGoLive(userId: string, ws?: WebSocket) {
       });
 
       streamer.on("stopped", () => {
-        console.log(`[relay] RTMP stopped for user ${userId}`);
+        logger.info({ userId }, "RTMP stopped");
       });
 
       streamer.on("channel-error", (channelId: string, error: string) => {
@@ -931,16 +981,16 @@ async function handleGoLive(userId: string, ws?: WebSocket) {
       const started = streamer.start(rtmpConfigs, ingestUrl);
       if (started) {
         activeStreamers.set(userId, streamer);
-        console.log(`[relay] RTMP streamer started for user ${userId} with ${rtmpConfigs.length} destination(s)`);
+        logger.info({ userId, destinations: rtmpConfigs.length }, "RTMP streamer started");
 
         // Update stream stage
         sessionManager.updateStage(userId, "stream", "active", "Connecting...");
       } else {
-        console.warn(`[relay] RTMP streamer failed to start for user ${userId}`);
+        logger.warn({ userId }, "RTMP streamer failed to start");
         sessionManager.updateStage(userId, "stream", "error", "FFmpeg failed");
       }
     } else {
-      console.log(`[relay] No RTMP destinations configured — pipeline-only mode`);
+      logger.info({ userId }, "Pipeline-only mode");
       sessionManager.updateStage(userId, "stream", "idle", "No RTMP");
     }
 
@@ -955,9 +1005,9 @@ async function handleGoLive(userId: string, ws?: WebSocket) {
       rtmp: rtmpSnap || { active: false, channels: [] },
     });
 
-    console.log(`[relay] Session started for user ${userId} with languages: ${languages.join(", ")}`);
+    logger.info({ userId, languages: languages.join(", ") }, "Session started");
   } catch (err) {
-    console.error(`[relay] GO_LIVE failed for user ${userId}:`, err);
+    logger.error({ err, userId }, "GO_LIVE failed");
     sendToClient(ws, {
       type: "GO_LIVE_ERROR",
       error: "Failed to start session. Please try again.",

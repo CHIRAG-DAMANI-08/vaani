@@ -1,4 +1,5 @@
 import { StatusRow } from "./StatusRow";
+import { logger } from "@/lib/logger";
 import { PipelineMonitor } from "./PipelineMonitor";
 import { SessionStats } from "./SessionStats";
 import { LiveTranscript } from "./LiveTranscript";
@@ -36,7 +37,7 @@ export default async function DashboardPage() {
         .limit(5)
         .lean();
     } catch (err) {
-      console.error("Dashboard fetch error:", err);
+      logger.error({ err }, "Dashboard data fetch failed");
     }
   }
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/lib/models/user";
@@ -43,7 +44,7 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error) {
-    console.error(`[key/status] Failed for user ${userId}:`, error);
+    logger.error({ err: error, userId }, "Key status check failed");
     return NextResponse.json(
       { error: "INTERNAL_ERROR", message: "Something went wrong." },
       { status: 500 }

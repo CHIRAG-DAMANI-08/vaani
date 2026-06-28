@@ -33,7 +33,7 @@ export const SecuritySection = () => {
           Built in from day one.
         </motion.h2>
 
-        <div className="flex justify-center gap-6 md:gap-10">
+        <div className="flex flex-wrap justify-center gap-4 md:gap-10">
           {badges.map((badge, index) => (
             <motion.div
               key={badge.label}
@@ -44,7 +44,7 @@ export const SecuritySection = () => {
               className="flex flex-col items-center"
             >
               <div
-                className="flex justify-center items-center rounded-4xl md:rounded-full w-[140px] md:w-[200px] h-[140px] md:h-[200px] hover:scale-105 transition-transform duration-300"
+                className="flex justify-center items-center rounded-3xl md:rounded-full w-[105px] h-[105px] sm:w-[140px] sm:h-[140px] md:w-[200px] md:h-[200px] hover:scale-105 transition-transform duration-300"
                 style={{ background: "#F0F3FA", boxShadow: "inset 0 0 50px #A5BBFC" }}
               >
                 <img

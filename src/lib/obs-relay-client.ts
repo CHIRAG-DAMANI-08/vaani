@@ -1,5 +1,6 @@
 import OBSWebSocket from "obs-websocket-js";
 import type { SessionSnapshot } from "./stream-session";
+import { logger } from "./logger";
 
 export type RTMPChannelStatus = {
   channelId: string;
@@ -179,11 +180,11 @@ class OBSRelayManager {
         sessionToken = await Clerk.session.getToken() || "";
       }
     } catch (e) {
-      console.warn("[relay] Could not get Clerk session token:", e);
+      logger.warn({ err: e }, "Could not get Clerk session token");
     }
 
     if (!sessionToken) {
-      console.log("[relay] Clerk session not ready, retrying initRelay in 500ms");
+      logger.debug("Clerk session not ready, retrying initRelay");
       setTimeout(() => this.initRelay(), 500);
       return;
     }
@@ -199,7 +200,7 @@ class OBSRelayManager {
     this.relayWs = new WebSocket(`${protocol}//${host}/ws/relay`, protocols);
 
     this.relayWs.onopen = () => {
-      console.log("[relay] Relay WS connected");
+      logger.info("Relay WS connected");
       this.retryCount = 0;
     };
 
@@ -216,7 +217,9 @@ class OBSRelayManager {
             const pace = parseFloat(localStorage.getItem("vaani_tts_pace") || "1.0");
             const sourceLang = localStorage.getItem("vaani_source_lang") || "auto";
             this.setTTSSettings({ speaker, pace, sourceLang });
-          } catch (e) {}
+          } catch (e) {
+            logger.debug({ err: e }, "TTS settings sync failed");
+          }
 
         } else if (msg.type === "OBS_CREDENTIALS") {
           this.credentials = {
@@ -285,22 +288,22 @@ class OBSRelayManager {
           this.audioLevelListeners.forEach((l) => l(this._audioLevel));
         }
       } catch (e) {
-        console.error("Relay WS message error:", e);
+        logger.error({ err: e }, "Relay WS message error");
       }
     };
 
     this.relayWs.onclose = () => {
       this.relayWs = null;
-      console.log("[relay] Relay WS closed");
+      logger.info("Relay WS closed");
       
       // Auto-reconnect with backoff
       if (this.retryCount < this.maxRetries) {
         const delay = this.backoffDelays[this.retryCount] || 30000;
         this.retryCount++;
-        console.log(`[relay] Retrying relay connection in ${delay}ms (attempt ${this.retryCount}/${this.maxRetries})`);
+        logger.info({ delay, attempt: this.retryCount, maxAttempts: this.maxRetries }, "Retrying relay connection");
         setTimeout(() => this.initRelay(), delay);
       } else {
-        console.error("[relay] Max relay retries reached");
+        logger.error("Max relay retries reached");
         if (this._isStreaming) {
           this.setStreaming(false);
         }
@@ -317,7 +320,9 @@ class OBSRelayManager {
 
     try {
       if (this.obsClient) {
-        try { await this.obsClient.disconnect(); } catch (e) {} // ignore
+        try { await this.obsClient.disconnect(); } catch (e) {
+          logger.debug({ err: e }, "OBS disconnect during reconnect failed");
+        }
       }
 
       await this.obsClient.connect(
@@ -392,7 +397,9 @@ class OBSRelayManager {
     this.setState("unconfigured");
     if (this.retryTimeout) clearTimeout(this.retryTimeout);
     if (this.obsClient) {
-      try { this.obsClient.disconnect(); } catch (e) {}
+      try { this.obsClient.disconnect(); } catch (e) {
+        logger.debug({ err: e }, "Cleanup OBS disconnect failed");
+      }
     }
     if (this.relayWs) {
       this.relayWs.close();

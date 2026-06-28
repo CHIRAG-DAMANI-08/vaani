@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/lib/models/user";
@@ -63,14 +64,14 @@ export async function DELETE(request: Request) {
       }
     );
 
-    console.log(`[key/delete] Key removed for user ${userId}`);
+    logger.info({ userId }, "Key removed");
 
     return NextResponse.json(
       { success: true },
       { status: 200, headers: rateLimitHeaders(rateResult) }
     );
   } catch (error) {
-    console.error(`[key/delete] Failed for user ${userId}:`, error);
+    logger.error({ err: error, userId }, "Key removal failed");
     return NextResponse.json(
       { error: "INTERNAL_ERROR", message: "Something went wrong. Please try again." },
       { status: 500 }

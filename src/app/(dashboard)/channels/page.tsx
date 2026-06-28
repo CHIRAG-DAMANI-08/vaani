@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { logger } from "@/lib/logger";
 import {
   Plus,
   Pencil,
@@ -13,6 +14,7 @@ import {
   Radio,
   ExternalLink,
 } from "lucide-react";
+import { toast } from "sonner";
 
 type ChannelData = {
   id: string;
@@ -46,7 +48,7 @@ export default function ChannelsPage() {
         setChannels(data.channels);
       }
     } catch (err) {
-      console.error("Failed to fetch channels:", err);
+      logger.error({ err }, "Channels fetch failed");
     } finally {
       setLoading(false);
     }
@@ -66,7 +68,7 @@ export default function ChannelsPage() {
           languageId,
           rtmpUrl: editRtmpUrl || null,
           rtmpKey: editRtmpKey || null,
-          enabled: !!(editRtmpKey),
+          enabled: !!(editRtmpKey) || (!editRtmpKey && channels.find(c => c.id === languageId)?.hasRtmpKey ? channels.find(c => c.id === languageId)?.enabled : false),
         }),
       });
 
@@ -76,9 +78,13 @@ export default function ChannelsPage() {
         setEditRtmpKey("");
         setShowRtmpKey(false);
         fetchChannels();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to save channel. Please try again.");
       }
     } catch (err) {
-      console.error("Failed to save channel:", err);
+      logger.error({ err }, "Channel save failed");
+      toast.error("Failed to save channel. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -86,7 +92,7 @@ export default function ChannelsPage() {
 
   const handleToggle = async (ch: ChannelData) => {
     try {
-      await fetch("/api/channels", {
+      const res = await fetch("/api/channels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -94,23 +100,31 @@ export default function ChannelsPage() {
           enabled: !ch.enabled,
         }),
       });
+      if (!res.ok) {
+        toast.error("Failed to update channel.");
+      }
       fetchChannels();
     } catch (err) {
-      console.error("Failed to toggle channel:", err);
+      logger.error({ err }, "Channel toggle failed");
+      toast.error("Failed to update channel.");
     }
   };
 
   const handleDelete = async (languageId: string) => {
     try {
-      await fetch("/api/channels", {
+      const res = await fetch("/api/channels", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ languageId }),
       });
+      if (!res.ok) {
+        toast.error("Failed to delete channel.");
+      }
       setDeleteConfirm(null);
       fetchChannels();
     } catch (err) {
-      console.error("Failed to delete channel:", err);
+      logger.error({ err }, "Channel delete failed");
+      toast.error("Failed to delete channel.");
     }
   };
 

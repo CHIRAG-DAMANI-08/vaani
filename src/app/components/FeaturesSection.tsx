@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 const features = [
   {
     title: "Multilingual streaming",
-    description: "Simultaneous stream in Hindi, Tamil, Telugu, and Marathi",
+    description: "Simultaneous stream in Hindi, Tamil, Telugu, and Kannada",
   },
   {
     title: "Natural-sounding voices",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { logger } from "@/lib/logger";
 import {
   Eye,
   EyeOff,
@@ -85,7 +86,7 @@ export default function SettingsPage() {
         setKeyStatus(data as KeyStatus);
       }
     } catch (err) {
-      console.error("[settings] Failed to fetch key status:", err);
+      logger.error({ err }, "Key status fetch failed");
     } finally {
       setLoading(false);
     }

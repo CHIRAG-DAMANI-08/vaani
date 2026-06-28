@@ -20,7 +20,6 @@ const SOURCE_LANGUAGES = [
   { value: "hi-IN", label: "Hindi" },
   { value: "ta-IN", label: "Tamil" },
   { value: "te-IN", label: "Telugu" },
-  { value: "mr-IN", label: "Marathi" },
   { value: "bn-IN", label: "Bengali" },
   { value: "kn-IN", label: "Kannada" },
   { value: "ml-IN", label: "Malayalam" },

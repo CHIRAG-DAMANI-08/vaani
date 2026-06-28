@@ -11,13 +11,8 @@ import {
   LayoutDashboard,
   Radio,
   Settings,
-  Play,
-  Square,
   Menu,
   X,
-  Bell,
-  Search,
-  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -124,8 +119,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           onClose={() => setShowPreflight(false)} 
           onStart={() => {
             setShowPreflight(false);
-            // In a fully robust system, this might trigger the actual RTMP pipeline start.
-            // Right now, the backend auto-starts when OBS streams, so this is just a readiness check.
+            // Backend auto-starts when OBS streams to RTMP — this modal is just a readiness check.
           }} 
         />
       )}
@@ -266,27 +260,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </button>
             <div className="lg:hidden font-syne font-bold text-[22px] text-gray-900">Vaani.</div>
 
-            {/* Global Search Bar (Visual) */}
-            <div className="hidden lg:flex items-center bg-white/50 hover:bg-white/80 transition-colors border border-white shadow-sm rounded-[16px] px-4 py-2.5 w-[320px]">
-              <Search className="w-4 h-4 text-gray-400 mr-3" />
-              <input 
-                type="text" 
-                placeholder="Search resources..." 
-                className="bg-transparent border-none outline-none text-[14px] font-medium text-gray-700 w-full placeholder:text-gray-400"
-              />
-            </div>
-
             <div className="flex-1 lg:hidden" />
 
             {/* Right side Actions */}
             <div className="flex justify-end gap-4 lg:gap-6 items-center">
               <StreamStatusPill status={streamStatus} />
-              
-              <button className="hidden lg:flex p-2.5 rounded-[14px] bg-white/50 hover:bg-white text-gray-600 transition-all shadow-sm border border-white">
-                 <div className="relative">
-                   <Bell className="w-[18px] h-[18px]" />
-                 </div>
-              </button>
 
               <div className="flex items-center gap-3 bg-white/50 pl-3 pr-2 py-2 rounded-[16px] border border-white shadow-sm hover:bg-white transition-colors cursor-pointer">
                  <div className="hidden lg:block text-right pr-2">
@@ -310,6 +288,61 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       
+      {/* ── Mobile Menu Overlay ── */}
+      {mobileOpen && (
+        <div className="lg:hidden absolute inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => setMobileOpen(false)}>
+          <div
+            className="absolute top-[80px] left-4 right-4 bg-white/95 backdrop-blur-xl rounded-[24px] shadow-[0_24px_60px_rgba(0,0,0,0.12)] border border-white p-4 animate-[fade-slide-down_200ms_ease-out]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <nav className="space-y-1">
+              {navItems.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-[14px] text-[15px] font-medium transition-all ${
+                      isActive
+                        ? "bg-[#FFF2E5] text-[#F5821F]"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+              <div className="pt-2 mt-2 border-t border-gray-100">
+                <Link
+                  href="/settings"
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-[14px] text-[15px] font-medium transition-all ${
+                    pathname.startsWith("/settings")
+                      ? "bg-[#FFF2E5] text-[#F5821F]"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <Settings className="w-5 h-5" />
+                  Settings
+                </Link>
+              </div>
+            </nav>
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-3 px-4 py-2">
+                <UserButton
+                  appearance={{
+                    elements: { avatarBox: "w-8 h-8 rounded-[10px]" },
+                  }}
+                />
+                <span className="text-[13px] font-medium text-gray-700">{user?.firstName || "User"}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Mobile Tab Bar (Floating Pill) ── */}
       <div className="lg:hidden fixed bottom-6 inset-x-6 h-[72px] glass-modal z-[60] flex items-center justify-around px-2">
         <Link href="/dashboard" className={`p-3 rounded-[16px] transition-all ${pathname === '/dashboard' ? 'bg-[#FFF2E5] text-[#F5821F]' : 'text-gray-400'}`}>

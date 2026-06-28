@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { logger } from "@/lib/logger";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { joinWaitlist } from "@/app/actions/join-waitlist";
@@ -67,7 +68,7 @@ export const WaitlistModal = () => {
         setStatus("success");
       }
     } catch (error) {
-      console.error(error);
+      logger.error({ error }, "Waitlist submit failed");;
       setStatus("error");
     }
   };

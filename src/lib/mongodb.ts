@@ -19,7 +19,7 @@ export async function connectToDatabase() {
 
   if (!cached.promise) {
     cached.promise = mongoose.connect(MONGODB_URI as string, {
-      bufferCommands: false,
+      bufferCommands: process.env.NODE_ENV === "production" ? false : true,
       dbName: "vaani_db",
     });
   }
