@@ -40,6 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Git worktrees (isolated workspaces for parallel tasks)
+.worktrees/
+
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
