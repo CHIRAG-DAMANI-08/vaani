@@ -93,7 +93,7 @@ export const WaitlistModal = () => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 15 }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-md bg-white/95 backdrop-blur-2xl border border-white/60 rounded-[32px] shadow-2xl p-8 md:p-10 overflow-hidden"
+            className="relative w-full max-w-md bg-[rgba(var(--glass-bg),0.95)] backdrop-blur-2xl border-[rgba(var(--glass-bg),0.6)] border rounded-[32px] shadow-2xl p-8 md:p-10 overflow-hidden"
           >
             {/* Close Button */}
             <button
@@ -114,7 +114,7 @@ export const WaitlistModal = () => {
                 <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
                   <CheckCircle2 size={32} />
                 </div>
-                <h2 className="text-2xl font-normal mb-3" style={{ fontFamily: "var(--font-playfair)" }}>
+                <h2 className="text-2xl font-normal mb-3 font-serif">
                   You're on the list!
                 </h2>
                 <p className="text-muted text-sm leading-relaxed mb-8">
@@ -134,7 +134,7 @@ export const WaitlistModal = () => {
                 transition={{ duration: 0.3 }}
                 className="flex flex-col"
               >
-                <h2 id="waitlist-title" className="text-3xl font-normal mb-3 text-foreground" style={{ fontFamily: "var(--font-playfair)" }}>
+                <h2 id="waitlist-title" className="text-3xl font-normal mb-3 font-serif">
                   Join the Waitlist
                 </h2>
                 <p className="text-muted text-sm leading-relaxed mb-8">
@@ -156,7 +156,7 @@ export const WaitlistModal = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={status === "loading"}
-                      className="w-full px-5 py-3.5 bg-white/50 border border-[#d4d4d0] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-black/20 focus:bg-white transition-all shadow-sm placeholder:text-muted/60 disabled:opacity-50"
+                      className="w-full px-5 py-3.5 bg-white/50 border border-input-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-black/20 focus:bg-white transition-all shadow-sm placeholder:text-muted/60 disabled:opacity-50"
                     />
                   </div>
 
@@ -172,7 +172,7 @@ export const WaitlistModal = () => {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       disabled={status === "loading"}
-                      className="w-full px-5 py-3.5 bg-white/50 border border-[#d4d4d0] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-black/20 focus:bg-white transition-all shadow-sm placeholder:text-muted/60 disabled:opacity-50"
+                      className="w-full px-5 py-3.5 bg-white/50 border border-input-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-black/20 focus:bg-white transition-all shadow-sm placeholder:text-muted/60 disabled:opacity-50"
                     />
                   </div>
 
@@ -195,8 +195,7 @@ export const WaitlistModal = () => {
                   <button
                     type="submit"
                     disabled={status === "loading" || !email}
-                    className="mt-2 w-full flex items-center justify-center px-6 py-4 text-base font-medium text-white bg-[#131313] rounded-full hover:bg-[#2a2a2a] disabled:opacity-70 disabled:hover:bg-[#131313] active:scale-[0.98] disabled:active:scale-100 transition-all duration-200 shadow-[0_4px_24px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]"
-                    style={{ fontFamily: "var(--font-playfair)" }}
+                    className="mt-2 w-full flex items-center justify-center px-6 py-4 text-base font-medium text-white bg-foreground rounded-full hover:bg-[#2a2a2a] disabled:opacity-70 disabled:hover:bg-foreground active:scale-[0.98] disabled:active:scale-100 transition-all duration-200 cta-shadow font-serif"
                   >
                     {status === "loading" ? (
                       <Loader2 className="animate-spin" size={20} />

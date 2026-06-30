@@ -26,8 +26,7 @@ export const FeaturesSection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-3xl md:text-5xl font-normal text-center mb-16"
-          style={{ fontFamily: "var(--font-playfair)" }}
+          className="text-3xl md:text-5xl font-normal text-center mb-16 font-serif"
         >
           Reach every viewer in their language
         </motion.h2>
@@ -37,7 +36,7 @@ export const FeaturesSection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="flex md:flex-row flex-col gap-3 bg-white p-4 md:p-6 rounded-[24px] md:rounded-[48px] w-full overflow-hidden shadow-[0_4px_30px_rgba(0,0,0,0.05)] border border-card-border"
+          className="flex md:flex-row flex-col gap-3 bg-card-bg p-4 md:p-6 rounded-[24px] md:rounded-[48px] w-full overflow-hidden shadow-[0_4px_30px_rgba(0,0,0,0.05)] border border-card-border"
         >
           {/* Image Container */}
           <div className="relative rounded-2xl w-full md:w-[50%] h-[250px] md:h-[420px] overflow-hidden shrink-0">
@@ -127,16 +126,16 @@ export const FeaturesSection = () => {
                       y2="-3.67886"
                       gradientUnits="userSpaceOnUse"
                     >
-                      <stop stopColor="#E3F1D8"></stop>
-                      <stop offset="0.33" stopColor="#C8E4B0"></stop>
-                      <stop offset="0.66" stopColor="#83C040"></stop>
-                      <stop offset="1" stopColor="#496D21"></stop>
+                      <stop stopColor="var(--feature-grad-top)"></stop>
+                      <stop offset="0.33" stopColor="var(--feature-grad-mid1)"></stop>
+                      <stop offset="0.66" stopColor="var(--feature-grad-mid2)"></stop>
+                      <stop offset="1" stopColor="var(--feature-grad-end)"></stop>
                     </linearGradient>
                   </defs>
                 </svg>
 
                 <div className="flex flex-col gap-1.5 md:gap-3">
-                  <h3 className="font-medium md:text-[22px] text-xl text-[#1A1A1F] leading-normal tracking-[-0.22px]">
+                  <h3 className="font-medium md:text-[22px] text-xl text-text-primary leading-normal tracking-[-0.22px]">
                     {feature.title}
                   </h3>
                   <p className="text-secondary text-base leading-normal tracking-[-0.16px]">

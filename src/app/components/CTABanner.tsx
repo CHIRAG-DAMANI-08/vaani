@@ -15,7 +15,7 @@ export const CTABanner = () => {
           className="relative rounded-[40px] overflow-hidden px-8 py-20 md:py-28"
           style={{
             background:
-              "linear-gradient(135deg, rgba(200,210,240,0.3) 0%, rgba(230,220,240,0.2) 30%, rgba(244,162,97,0.15) 60%, rgba(200,210,240,0.2) 100%)",
+              "linear-gradient(135deg, rgba(var(--cloud-gradient),0.3) 0%, rgba(var(--aurora-lavender),0.2) 30%, rgba(var(--aurora-orange),0.15) 60%, rgba(var(--cloud-gradient),0.2) 100%)",
           }}
         >
           {/* Subtle decorative gradient orbs */}
@@ -23,14 +23,11 @@ export const CTABanner = () => {
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full opacity-30"
             style={{
               background:
-                "radial-gradient(circle, rgba(244,162,97,0.3) 0%, transparent 60%)",
+                "radial-gradient(circle, rgba(var(--aurora-orange),0.3) 0%, transparent 60%)",
             }}
           />
 
-          <h2
-            className="relative z-10 text-3xl md:text-5xl lg:text-6xl font-normal leading-tight mb-8"
-            style={{ fontFamily: "var(--font-playfair)" }}
-          >
+          <h2 className="relative z-10 text-3xl md:text-5xl lg:text-6xl font-normal leading-tight mb-8 font-serif">
             Stream once. Reach everyone
             <br />
             with Vaani.
@@ -38,8 +35,7 @@ export const CTABanner = () => {
 
           <button
             onClick={(e) => { e.preventDefault(); window.dispatchEvent(new Event("open-waitlist")); }}
-            className="relative z-10 inline-flex items-center px-8 py-4 text-base font-medium text-white bg-[#131313] rounded-full hover:bg-[#2a2a2a] active:scale-95 transition-all duration-200 shadow-[0_4px_24px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]"
-            style={{ fontFamily: "var(--font-playfair)" }}
+            className="relative z-10 inline-flex items-center px-8 py-4 text-base font-medium text-white bg-foreground rounded-full hover:bg-[#2a2a2a] active:scale-95 transition-all duration-200 cta-shadow font-serif"
           >
             Join the waitlist
           </button>

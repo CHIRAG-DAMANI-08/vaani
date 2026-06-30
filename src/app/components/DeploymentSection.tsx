@@ -29,8 +29,7 @@ export const DeploymentSection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-3xl md:text-5xl font-normal text-center mb-16 leading-tight"
-          style={{ fontFamily: "var(--font-syne)" }}
+          className="text-3xl md:text-5xl font-normal text-center mb-16 leading-tight font-serif"
         >
           Pricing
           <br />
@@ -45,7 +44,7 @@ export const DeploymentSection = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="group rounded-3xl bg-white border border-card-border p-6 md:p-8 hover:-translate-y-1 hover:shadow-md transition-all duration-300"
+              className="group rounded-3xl bg-card-bg border border-card-border p-6 md:p-8 hover:-translate-y-1 hover:shadow-md transition-all duration-300"
             >
               <div className="flex flex-col items-center text-center gap-6">
                 <div
@@ -58,13 +57,10 @@ export const DeploymentSection = () => {
                   />
                 </div>
                 <div className="w-full">
-                  <h3
-                    className="text-lg font-semibold mb-2 text-center whitespace-nowrap text-[#1A1A1F]"
-                    style={{ fontFamily: "var(--font-syne)" }}
-                  >
+                  <h3 className="text-lg font-semibold mb-2 text-center whitespace-nowrap text-text-primary">
                     {item.title}
                   </h3>
-                  <p className="text-sm text-[#5A5854] leading-relaxed text-center whitespace-nowrap">
+                  <p className="text-sm text-text-secondary leading-relaxed text-center whitespace-nowrap">
                     {item.description}
                   </p>
                 </div>

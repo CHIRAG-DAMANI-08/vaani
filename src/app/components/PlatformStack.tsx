@@ -70,7 +70,12 @@ export const PlatformStack = () => {
   const gradBottom = useTransform(
     smoothProgress,
     [0, 0.33, 0.66, 1],
-    ["#c4b5fd", "#bbc5e4", "#a3c4a8", "#a3c4a8"]
+    [
+      "var(--platform-bottom-1)",
+      "var(--platform-bottom-2)",
+      "var(--platform-bottom-3)",
+      "var(--platform-bottom-3)",
+    ]
   );
 
   // Heading fade
@@ -105,8 +110,8 @@ export const PlatformStack = () => {
 
           {/* Section heading */}
           <motion.h2
-            style={{ opacity: headingOpacity, fontFamily: "var(--font-playfair)" }}
-            className="text-3xl md:text-5xl font-normal text-center mb-16"
+            style={{ opacity: headingOpacity }}
+            className="text-3xl md:text-5xl font-normal text-center mb-16 font-serif"
           >
             How Vaani Works
           </motion.h2>
@@ -119,7 +124,7 @@ export const PlatformStack = () => {
                 style={{
                   background: useTransform(
                     gradBottom,
-                    (v) => `linear-gradient(180deg, #f97316 0%, ${v} 100%)`
+                    (v) => `linear-gradient(180deg, var(--platform-top) 0%, ${v} 100%)`
                   ),
                 }}
               >
@@ -212,10 +217,7 @@ export const PlatformStack = () => {
                       right: index === 0 ? undefined : 0,
                     }}
                   >
-                    <h3
-                      className="text-xl md:text-2xl font-bold mb-4"
-                      style={{ fontFamily: "var(--font-playfair)" }}
-                    >
+                    <h3 className="text-xl md:text-2xl font-bold mb-4 font-serif">
                       {section.title}
                     </h3>
                     <p className="text-muted text-sm md:text-base leading-relaxed mb-6 max-w-md">
@@ -226,7 +228,7 @@ export const PlatformStack = () => {
                       {section.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="px-4 py-1.5 text-sm text-foreground/70 bg-white shadow-sm border border-card-border rounded-full"
+                          className="px-4 py-1.5 text-sm text-foreground/70 bg-card-bg shadow-sm border border-card-border rounded-full"
                         >
                           {tag}
                         </span>

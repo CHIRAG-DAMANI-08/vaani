@@ -8,7 +8,7 @@ const articles = [
     tag: "TECH",
     title: "Powered by IndicConformer",
     date: "IIT Madras - Speech Recognition",
-    gradient: "linear-gradient(135deg, #6a8a30 0%, #8aaa40 50%, #7a9a30 100%)",
+    gradient: "linear-gradient(135deg, var(--research-card-1a) 0%, var(--research-card-1b) 50%, var(--research-card-1c) 100%)",
     label: "Indic\nConformer",
     href: "#",
   },
@@ -17,7 +17,7 @@ const articles = [
     title: "IndicTrans2",
     date: "Translation across all 22 Indian languages",
     gradient:
-      "linear-gradient(135deg, #e8a040 0%, #f0b860 50%, #d89030 100%)",
+      "linear-gradient(135deg, var(--research-card-2a) 0%, var(--research-card-2b) 50%, var(--research-card-2c) 100%)",
     label: "Indic\nTrans2",
     href: "#",
   },
@@ -26,7 +26,7 @@ const articles = [
     title: "Sarvam Bulbul V3",
     date: "Natural Indian voice synthesis",
     gradient:
-      "linear-gradient(135deg, #e09040 0%, #f0a050 50%, #d08030 100%)",
+      "linear-gradient(135deg, var(--research-card-3a) 0%, var(--research-card-3b) 50%, var(--research-card-3c) 100%)",
     label: "Bulbul\nV3",
     href: "#",
   },
@@ -41,8 +41,7 @@ export const ResearchSection = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-3xl md:text-5xl font-normal text-center mb-16"
-            style={{ fontFamily: "var(--font-syne)" }}
+            className="text-3xl md:text-5xl font-normal text-center mb-16 font-serif"
           >
             Built in India, for Indian creators
           </motion.h2>
@@ -58,20 +57,17 @@ export const ResearchSection = () => {
             >
               <Link
                 href={article.href}
-                className="group block rounded-3xl bg-white border border-card-border overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300"
+                className="group block rounded-3xl bg-card-bg border border-card-border overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300"
               >
                 {/* Text Content */}
                 <div className="p-6 pb-4">
-                  <span className="text-xs font-semibold tracking-wider text-[#F5821F] uppercase">
+                  <span className="text-xs font-semibold tracking-wider text-accent-saffron uppercase font-semibold">
                     {article.tag}
                   </span>
-                  <h3
-                    className="text-lg font-semibold mt-2 mb-1 text-[#1A1A1F]"
-                    style={{ fontFamily: "var(--font-syne)" }}
-                  >
+                  <h3 className="text-lg font-semibold mt-2 mb-1 text-text-primary">
                     {article.title}
                   </h3>
-                  <p className="text-sm text-[#5A5854]">{article.date}</p>
+                  <p className="text-sm text-text-secondary">{article.date}</p>
                 </div>
 
                 {/* Gradient Cover Image */}
@@ -114,10 +110,7 @@ export const ResearchSection = () => {
                       fill="rgba(255,255,255,0.1)"
                     />
                   </svg>
-                  <span
-                    className="relative z-10 text-2xl md:text-3xl font-bold text-white text-center whitespace-pre-line leading-tight drop-shadow-md"
-                    style={{ fontFamily: "var(--font-syne)" }}
-                  >
+                  <span className="relative z-10 text-2xl md:text-3xl font-bold text-white text-center whitespace-pre-line leading-tight drop-shadow-md font-serif">
                     {article.label}
                   </span>
                 </div>
@@ -134,8 +127,7 @@ export const ResearchSection = () => {
         >
           <Link
             href="#"
-            className="inline-flex items-center px-7 py-3 text-sm font-medium text-[#1A1A1F] bg-white border border-card-border rounded-full hover:bg-gray-50 transition-colors"
-            style={{ fontFamily: "var(--font-syne)" }}
+            className="inline-flex items-center px-7 py-3 text-sm font-medium text-text-primary bg-card-bg border border-card-border rounded-full hover:bg-black/5 transition-colors font-semibold"
           >
             See all models used
           </Link>

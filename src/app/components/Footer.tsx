@@ -43,14 +43,11 @@ const footerSections = [
 
 export const Footer = () => {
   return (
-    <footer className="border-t border-card-border bg-[#F2F2EE] py-16 px-6">
+    <footer className="border-t border-card-border bg-footer-bg py-16 px-6">
       <div className="max-w-6xl mx-auto">
         {/* Logo */}
         <div className="mb-12">
-          <span
-            className="text-2xl font-bold tracking-tight"
-            style={{ fontFamily: "var(--font-playfair)" }}
-          >
+          <span className="text-2xl font-bold tracking-tight font-serif">
             vaani
           </span>
         </div>

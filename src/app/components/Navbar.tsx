@@ -4,10 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
-import {
-  Menu,
-  X,
-} from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 const navLinks = [
   { label: "How it works", href: "#how-it-works" },
@@ -33,15 +30,15 @@ export const Navbar = () => {
       transition={{ duration: 0.5, ease: "easeOut" }}
       className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-[1200px] rounded-full transition-all duration-300 ${
         scrolled
-          ? "bg-white/90 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-200"
-          : "bg-white/80 backdrop-blur-md border border-gray-200"
+          ? "bg-card-bg/90 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-card-border"
+          : "bg-card-bg/80 backdrop-blur-md border border-card-border"
       }`}
     >
       <div className="flex items-center justify-between px-6 py-3">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <span
-            className="text-2xl font-bold tracking-tight text-gray-900"
+            className="text-2xl font-bold tracking-tight text-foreground"
             style={{ fontFamily: "var(--font-syne)" }}
           >
             vaani
@@ -54,7 +51,7 @@ export const Navbar = () => {
             <Link
               key={link.label}
               href={link.href}
-              className="px-4 py-2 text-sm font-medium tracking-wide uppercase text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 rounded-full transition-all duration-200"
+              className="px-4 py-2 text-sm font-medium tracking-wide uppercase text-text-secondary hover:text-foreground hover:bg-black/5 rounded-full transition-all duration-200"
             >
               {link.label}
             </Link>
@@ -66,15 +63,13 @@ export const Navbar = () => {
           <Show when="signed-out">
             <button
               onClick={(e) => { e.preventDefault(); window.dispatchEvent(new Event("open-waitlist")); }}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] active:scale-95 transition-all duration-200 shadow-sm"
-              style={{ fontFamily: "var(--font-syne)" }}
+              className="px-5 py-2.5 text-sm font-medium text-white bg-foreground rounded-full hover:bg-[#2a2a2a] active:scale-95 transition-all duration-200 cta-shadow font-serif"
             >
               Join the waitlist
             </button>
             <SignInButton>
               <button
-                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-full hover:bg-gray-50 active:scale-95 transition-all duration-200 shadow-sm"
-                style={{ fontFamily: "var(--font-syne)" }}
+                className="px-5 py-2.5 text-sm font-medium text-text-secondary bg-card-bg border border-card-border rounded-full hover:bg-black/5 active:scale-95 transition-all duration-200 shadow-sm font-sans"
               >
                 Sign in
               </button>
@@ -83,8 +78,7 @@ export const Navbar = () => {
           <Show when="signed-in">
             <Link
               href="/dashboard"
-              className="px-5 py-2.5 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] active:scale-95 transition-all duration-200 shadow-sm"
-              style={{ fontFamily: "var(--font-syne)" }}
+              className="px-5 py-2.5 text-sm font-medium text-white bg-foreground rounded-full hover:bg-[#2a2a2a] active:scale-95 transition-all duration-200 cta-shadow font-serif"
             >
               Dashboard
             </Link>
@@ -94,7 +88,7 @@ export const Navbar = () => {
 
         {/* Mobile Menu Toggle */}
         <button
-          className="md:hidden p-2 rounded-full text-gray-800 hover:bg-gray-100 transition-colors"
+          className="md:hidden p-2 rounded-full text-foreground hover:bg-black/5 transition-colors"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
         >
@@ -116,7 +110,7 @@ export const Navbar = () => {
                 <Link
                   key={link.label}
                   href={link.href}
-                  className="px-4 py-3 text-sm font-medium tracking-wide uppercase text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
+                  className="px-4 py-3 text-sm font-medium tracking-wide uppercase text-text-secondary hover:text-foreground hover:bg-black/5 rounded-xl transition-all"
                   onClick={() => setMobileOpen(false)}
                 >
                   {link.label}
@@ -126,12 +120,12 @@ export const Navbar = () => {
                 <Show when="signed-out">
                   <button
                     onClick={(e) => { e.preventDefault(); setMobileOpen(false); window.dispatchEvent(new Event("open-waitlist")); }}
-                    className="px-5 py-3 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] text-center shadow-sm"
+                    className="px-5 py-3 text-sm font-medium text-white bg-foreground rounded-full hover:bg-[#2a2a2a] text-center cta-shadow font-serif"
                   >
                     Join the waitlist
                   </button>
                   <SignInButton>
-                    <button className="px-5 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-full text-center hover:bg-gray-50 shadow-sm">
+                    <button className="px-5 py-3 text-sm font-medium text-text-secondary bg-card-bg border border-card-border rounded-full text-center hover:bg-black/5 shadow-sm font-sans">
                       Sign in
                     </button>
                   </SignInButton>
@@ -139,7 +133,7 @@ export const Navbar = () => {
                 <Show when="signed-in">
                   <Link
                     href="/dashboard"
-                    className="px-5 py-3 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] text-center shadow-sm"
+                    className="px-5 py-3 text-sm font-medium text-white bg-foreground rounded-full hover:bg-[#2a2a2a] text-center cta-shadow font-serif"
                     onClick={() => setMobileOpen(false)}
                   >
                     Dashboard

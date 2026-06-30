@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { Syne, DM_Sans, JetBrains_Mono, Inter, Playfair_Display } from "next/font/google";
+import { Syne, DM_Sans, Inter, Playfair_Display } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import { headers } from "next/headers";
 import { VaaniToaster } from "./VaaniToaster";
 import "./globals.css";
 
@@ -29,12 +28,6 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains",
-  subsets: ["latin"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   title: "Vaani - Real-Time Multilingual Streaming",
   description:
@@ -46,13 +39,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  console.log("RootLayout: Clerk Key:", process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${playfair.variable} ${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
+      className={`${inter.variable} ${playfair.variable} ${syne.variable} ${dmSans.variable} antialiased`}
     >
-      <body className="min-h-screen bg-[var(--background)] text-[var(--foreground)] font-sans">
+      <body className="min-h-screen bg-background text-foreground font-sans">
         <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
           {children}
         </ClerkProvider>

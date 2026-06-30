@@ -35,8 +35,7 @@ export const TestimonialsSection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-3xl md:text-5xl font-normal text-center mb-16"
-          style={{ fontFamily: "var(--font-syne)" }}
+          className="text-3xl md:text-5xl font-normal text-center mb-16 font-serif"
         >
           Frequently asked questions
         </motion.h2>
@@ -46,19 +45,16 @@ export const TestimonialsSection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="rounded-[32px] bg-white border border-card-border p-8 md:p-12"
+          className="rounded-[32px] bg-card-bg border border-card-border p-8 md:p-12"
         >
           {/* FAQs List */}
           <div className="flex flex-col gap-8 mb-8">
             {faqs.map((faq, index) => (
               <div key={index}>
-                <span
-                  className="text-xl font-bold tracking-tight text-[#1A1A1F] mb-2 block"
-                  style={{ fontFamily: "var(--font-syne)" }}
-                >
+                <span className="text-xl font-bold tracking-tight text-text-primary mb-2 block font-semibold">
                   {faq.q}
                 </span>
-                <p className="text-base md:text-lg leading-relaxed text-[#5A5854] max-w-4xl">
+                <p className="text-base md:text-lg leading-relaxed text-text-secondary max-w-4xl">
                   {faq.a}
                 </p>
               </div>

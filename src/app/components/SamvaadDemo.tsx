@@ -8,21 +8,21 @@ const demos = [
     gradient:
       "radial-gradient(circle, rgba(180,140,220,0.8) 0%, rgba(140,120,200,0.6) 40%, rgba(100,100,180,0.4) 70%, transparent 100%)",
     borderColor: "rgba(180,140,220,0.6)",
-    btnBg: "bg-purple-200/60",
+    btnBg: "bg-[var(--samvaad-hindi-btn)]",
   },
   {
     label: "Tamil Stream",
     gradient:
       "radial-gradient(circle, rgba(244,162,97,0.8) 0%, rgba(230,140,60,0.6) 40%, rgba(200,120,40,0.4) 70%, transparent 100%)",
     borderColor: "rgba(244,162,97,0.6)",
-    btnBg: "bg-orange-200/60",
+    btnBg: "bg-[var(--samvaad-tamil-btn)]",
   },
   {
     label: "Telugu Stream",
     gradient:
       "radial-gradient(circle, rgba(140,200,100,0.7) 0%, rgba(120,180,80,0.5) 40%, rgba(100,160,60,0.3) 70%, transparent 100%)",
     borderColor: "rgba(140,200,100,0.5)",
-    btnBg: "bg-green-200/60",
+    btnBg: "bg-[var(--samvaad-telugu-btn)]",
   },
 ];
 
@@ -35,8 +35,7 @@ export const SamvaadDemo = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-3xl md:text-5xl font-normal text-center mb-4"
-          style={{ fontFamily: "var(--font-playfair)" }}
+          className="text-3xl md:text-5xl font-normal text-center mb-4 font-serif"
         >
           See it in action
         </motion.h2>
@@ -44,13 +43,12 @@ export const SamvaadDemo = () => {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="text-center text-muted text-lg mb-16 max-w-2xl mx-auto"
-          style={{ fontFamily: "var(--font-playfair)" }}
+          className="text-center text-muted text-lg mb-16 max-w-2xl mx-auto font-serif"
         >
           Indian creators stream in English and miss hundreds of millions of regional viewers. There&apos;s no real-time way to reach them — until now.
         </motion.p>
 
-        <div className="rounded-[32px] bg-white/60 border border-card-border p-8 md:p-12">
+        <div className="rounded-[32px] bg-[rgba(var(--glass-bg),0.6)] border border-card-border p-8 md:p-12">
           <div className="grid md:grid-cols-3 gap-8">
             {demos.map((demo, index) => (
               <motion.div
@@ -99,10 +97,10 @@ export const SamvaadDemo = () => {
                           offset="0%"
                           stopColor={
                             index === 0
-                              ? "#c4a0e0"
+                              ? "var(--samvaad-hindi-outer)"
                               : index === 1
-                                ? "#f4a261"
-                                : "#8cc840"
+                                ? "var(--samvaad-tamil-outer)"
+                                : "var(--samvaad-telugu-outer)"
                           }
                           stopOpacity="0.8"
                         />
@@ -110,10 +108,10 @@ export const SamvaadDemo = () => {
                           offset="100%"
                           stopColor={
                             index === 0
-                              ? "#a080c0"
+                              ? "var(--samvaad-hindi-edge)"
                               : index === 1
-                                ? "#e08030"
-                                : "#6ca020"
+                                ? "color-mix(in srgb, var(--samvaad-tamil-outer) 70%, black)"
+                                : "color-mix(in srgb, var(--samvaad-telugu-outer) 70%, black)"
                           }
                           stopOpacity="0.3"
                         />
@@ -128,10 +126,10 @@ export const SamvaadDemo = () => {
                           offset="0%"
                           stopColor={
                             index === 0
-                              ? "#e0d0f0"
+                              ? "var(--samvaad-hindi-inner1)"
                               : index === 1
-                                ? "#f8d0a0"
-                                : "#c0e890"
+                                ? "var(--samvaad-tamil-inner1)"
+                                : "var(--samvaad-telugu-inner1)"
                           }
                           stopOpacity="0.9"
                         />
@@ -139,10 +137,10 @@ export const SamvaadDemo = () => {
                           offset="100%"
                           stopColor={
                             index === 0
-                              ? "#c0a0e0"
+                              ? "var(--samvaad-hindi-inner2)"
                               : index === 1
-                                ? "#f0b070"
-                                : "#90c050"
+                                ? "var(--samvaad-tamil-inner2)"
+                                : "var(--samvaad-telugu-inner2)"
                           }
                           stopOpacity="0.6"
                         />
@@ -152,16 +150,13 @@ export const SamvaadDemo = () => {
                   {/* Start speaking button overlay */}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <button
-                      className={`px-5 py-2 text-sm font-medium rounded-full ${demo.btnBg} backdrop-blur-sm text-[#5A5854] hover:scale-105 transition-transform`}
+                      className={`px-5 py-2 text-sm font-medium rounded-full ${demo.btnBg} backdrop-blur-sm text-text-secondary hover:scale-105 transition-transform`}
                     >
                       Start broadcasting
                     </button>
                   </div>
                 </div>
-                <p
-                  className="text-base font-medium text-[#1A1A1F]"
-                  style={{ fontFamily: "var(--font-playfair)" }}
-                >
+                <p className="text-base font-medium text-text-primary font-serif">
                   {demo.label}
                 </p>
               </motion.div>

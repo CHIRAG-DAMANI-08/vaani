@@ -75,8 +75,7 @@ export const HeroSection = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.4 }}
-        className="relative z-10 text-5xl md:text-7xl lg:text-8xl font-normal text-center leading-[1.1] tracking-tight mb-6"
-        style={{ fontFamily: "var(--font-playfair)" }}
+        className="relative z-10 text-5xl md:text-7xl lg:text-8xl font-normal text-center leading-[1.1] tracking-tight mb-6 font-serif"
       >
         Vaani
       </motion.h1>
@@ -100,8 +99,7 @@ export const HeroSection = () => {
       >
         <button
           onClick={(e) => { e.preventDefault(); window.dispatchEvent(new Event("open-waitlist")); }}
-          className="inline-flex items-center px-8 py-4 text-base font-medium text-white bg-[#131313] rounded-full hover:bg-[#2a2a2a] active:scale-95 transition-all duration-200 shadow-[0_4px_24px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]"
-          style={{ fontFamily: "var(--font-playfair)" }}
+          className="inline-flex items-center px-8 py-4 text-base font-medium text-white bg-foreground rounded-full hover:bg-[#2a2a2a] active:scale-95 transition-all duration-200 cta-shadow font-serif"
         >
           Join the waitlist
         </button>

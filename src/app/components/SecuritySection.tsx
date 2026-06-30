@@ -25,8 +25,7 @@ export const SecuritySection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-3xl md:text-5xl font-normal mb-16"
-          style={{ fontFamily: "var(--font-playfair)" }}
+          className="text-3xl md:text-5xl font-normal mb-16 font-serif"
         >
           Creator-first reliability.
           <br />
@@ -45,7 +44,7 @@ export const SecuritySection = () => {
             >
               <div
                 className="flex justify-center items-center rounded-4xl md:rounded-full w-[140px] md:w-[200px] h-[140px] md:h-[200px] hover:scale-105 transition-transform duration-300"
-                style={{ background: "#F0F3FA", boxShadow: "inset 0 0 50px #A5BBFC" }}
+                style={{ background: "var(--badge-disc-bg)", boxShadow: "inset 0 0 50px var(--badge-disc-glow)" }}
               >
                 <img
                   src={badge.imgSrc}
