@@ -90,6 +90,12 @@ export class RTMPStreamer extends EventEmitter {
   private maxRestartAttempts = 3;
   private audioInterval: NodeJS.Timeout | null = null;
   private audioQueue: Buffer[] = [];
+  // Set by stop() so the close handler and attemptRestart() never respawn
+  // FFmpeg after the user explicitly stopped the streamer.
+  private _stopped = false;
+  // Bound on queued audio so TTS bursts cannot grow memory without limit.
+  // ~60s of 24kHz 16-bit mono = ~2.8 MB; 200 chunks is a safe ceiling.
+  private maxAudioQueueChunks = 200;
 
   /**
    * Start the FFmpeg relay for the given channels.
@@ -282,7 +288,11 @@ export class RTMPStreamer extends EventEmitter {
         this.ffmpegProcess = null;
         if (this.audioInterval) clearInterval(this.audioInterval);
 
-        if (code !== 0 && code !== null) {
+        if (this._stopped) {
+          // Explicitly stopped — do not restart under any circumstance.
+          this.updateAllChannelStatuses("stopped");
+          this.emit("stopped");
+        } else if (code !== 0 && code !== null) {
           // Attempt restart on unexpected exit
           this.attemptRestart();
         } else if ((this as any)._fallbackRestarting) {
@@ -332,6 +342,11 @@ export class RTMPStreamer extends EventEmitter {
       const pcmBuffer = stripWavHeader(wavBuffer);
 
       if (pcmBuffer.length > 0) {
+        // Backpressure: if the queue is full, drop the oldest chunk rather
+        // than growing memory without bound under TTS burst conditions.
+        if (this.audioQueue.length >= this.maxAudioQueueChunks) {
+          this.audioQueue.shift();
+        }
         this.audioQueue.push(pcmBuffer);
       }
 
@@ -351,7 +366,9 @@ export class RTMPStreamer extends EventEmitter {
 
     logger.info({ bytesPushed: this.totalBytesPushed }, "FFmpeg stopping");
     this._active = false;
+    this._stopped = true; // prevent close handler / attemptRestart from respawning
     if (this.audioInterval) clearInterval(this.audioInterval);
+    this.audioQueue = []; // free queued audio immediately
 
     try {
       // Close stdin to signal end-of-input
@@ -387,6 +404,7 @@ export class RTMPStreamer extends EventEmitter {
    * Exponential backoff with a maximum of 3 attempts.
    */
   private attemptRestart(): void {
+    if (this._stopped) return;
     if (this.restartAttempts >= this.maxRestartAttempts) {
       logger.error({ maxAttempts: this.maxRestartAttempts }, "FFmpeg max restart attempts exceeded");
       this.updateAllChannelStatuses("error", "FFmpeg crashed — max retries exceeded");

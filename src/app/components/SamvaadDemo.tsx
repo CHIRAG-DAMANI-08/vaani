@@ -152,7 +152,8 @@ export const SamvaadDemo = () => {
                   {/* Start speaking button overlay */}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <button
-                      className={`px-5 py-2 text-sm font-medium rounded-full ${demo.btnBg} backdrop-blur-sm text-[#5A5854] hover:scale-105 transition-transform`}
+                      onClick={(e) => { e.preventDefault(); window.dispatchEvent(new Event("open-waitlist")); }}
+                      className={`px-5 py-2 text-sm font-medium rounded-full ${demo.btnBg} backdrop-blur-sm text-[#5A5854] hover:scale-105 transition-transform cursor-pointer`}
                     >
                       Start broadcasting
                     </button>

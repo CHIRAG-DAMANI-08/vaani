@@ -81,34 +81,33 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     }
     fetchStatuses();
 
-    // Initialize the WebSocket Relay Client on the frontend so it can proxy events to the server
+    // Accumulate relay unsubscribe fns here so the effect's cleanup can run
+    // them on unmount / pathname change. Without this, listeners accumulate in
+    // the OBSRelayManager's Sets on every navigation.
+    const unsubFns: Array<() => void> = [];
+
     import("@/lib/obs-relay-client").then((mod) => {
        mod.obsRelayManager.initRelay();
 
-       // Subscribe to streaming state
-       const unsubStream = mod.obsRelayManager.subscribeStreaming((streaming) => {
+       unsubFns.push(mod.obsRelayManager.subscribeStreaming((streaming) => {
          setIsStreaming(streaming);
-       });
+       }));
 
-       // Subscribe to session snapshots for cost
-       const unsubSnapshot = mod.obsRelayManager.subscribeSnapshot((snapshot) => {
+       unsubFns.push(mod.obsRelayManager.subscribeSnapshot((snapshot) => {
          setEstimatedCost(snapshot.stats?.estimatedCostINR ?? 0);
-       });
+       }));
 
-       // Subscribe to errors — show as toasts
-       const unsubError = mod.obsRelayManager.subscribeErrors((error) => {
+       unsubFns.push(mod.obsRelayManager.subscribeErrors((error) => {
          toast.error(error, {
            description: "Check your settings and try again.",
            duration: 5000,
          });
-       });
-
-       return () => {
-         unsubStream();
-         unsubSnapshot();
-         unsubError();
-       };
+       }));
     });
+
+    return () => {
+      unsubFns.forEach((fn) => fn());
+    };
   }, [pathname]);
 
   return (

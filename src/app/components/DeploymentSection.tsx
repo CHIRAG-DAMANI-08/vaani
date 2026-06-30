@@ -11,7 +11,7 @@ const deployments = [
   {
     imgSrc: "/built-for-02.png",
     title: "Pay Sarvam directly",
-    description: "For AI compute (~?12�18/hr per language)",
+    description: "For AI compute (~₹12–18/hr per language)",
   },
   {
     imgSrc: "/built-for-03.png",

@@ -84,6 +84,10 @@ type UserPipelineState = {
   cachedApiKey: string | null;
   cachedLanguages: string[] | null;
   cacheTimestamp: number;
+  // Monotonically increasing generation. When a session is cleared/restarted,
+  // the epoch is bumped so any in-flight drain loop holding a stale reference
+  // can detect the mismatch and bail instead of pushing results into a dead session.
+  epoch: number;
 };
 
 const userPipelineQueues = new Map<string, UserPipelineState>();
@@ -99,13 +103,32 @@ function getPipelineState(userId: string): UserPipelineState {
       cachedApiKey: null,
       cachedLanguages: null,
       cacheTimestamp: 0,
+      epoch: 0,
     });
   }
   return userPipelineQueues.get(userId)!;
 }
 
 function clearPipelineState(userId: string) {
-  userPipelineQueues.delete(userId);
+  const cur = userPipelineQueues.get(userId);
+  // Replace (not delete) with a fresh state at epoch+1. A stale drain-loop
+  // reference will see its captured epoch no longer match the live epoch via
+  // currentEpochOf() and bail. We avoid `delete` so concurrent code that calls
+  // getPipelineState right after still gets a valid (empty) object.
+  userPipelineQueues.set(userId, {
+    queue: [],
+    processing: false,
+    nextSeq: 0,
+    cachedApiKey: null,
+    cachedLanguages: null,
+    cacheTimestamp: 0,
+    epoch: cur ? cur.epoch + 1 : 0,
+  });
+}
+
+/** Read the live epoch for a userId without creating state. */
+function currentEpochOf(userId: string): number {
+  return userPipelineQueues.get(userId)?.epoch ?? -1;
 }
 
 async function saveSessionToDb(userId: string, sessionData: any) {
@@ -161,8 +184,16 @@ async function drainPipelineQueue(userId: string, ws: WebSocket | undefined) {
   const state = getPipelineState(userId);
   if (state.processing) return;
   state.processing = true;
+  // Capture the epoch at start. If clearPipelineState bumps the live epoch
+  // (e.g. session stopped + restarted), this loop is stale and must stop.
+  const startEpoch = state.epoch;
 
   while (state.queue.length > 0 && sessionManager.isActive(userId)) {
+    if (currentEpochOf(userId) !== startEpoch) {
+      logger.info({ userId, startEpoch, liveEpoch: currentEpochOf(userId) }, "Pipeline drain superseded by session restart — stopping");
+      state.processing = false;
+      return;
+    }
     const item = state.queue.shift()!;
     try {
       await executeChunkPipeline(userId, item.audioBase64, item.seq, ws);
@@ -176,7 +207,10 @@ async function drainPipelineQueue(userId: string, ws: WebSocket | undefined) {
     }
   }
 
-  state.processing = false;
+  // Only clear the processing flag if we still own this epoch.
+  if (currentEpochOf(userId) === startEpoch) {
+    state.processing = false;
+  }
 }
 
 /** Resolve API key + languages from cache or DB. */
@@ -511,13 +545,19 @@ app.prepare().then(() => {
     logger.debug({ streamKey }, "Extracted stream key");
     const userId = streamKey;
     if (userId) {
-      // Find the dashboard WebSocket connection
+      // Authentication: reject publishes from unauthenticated stream keys.
+      // The stream key IS the Clerk user ID (shown in Stream Settings). An
+      // attacker on port 1935 can guess a victim's Clerk ID; without this check
+      // they start a session as that user, burning quota and pushing attacker
+      // audio to the victim's RTMP destinations. Only accept publishes whose
+      // stream key maps to a currently-authenticated dashboard WebSocket.
       const ws = activeSessions.get(userId);
+      if (!ws) {
+        logger.warn({ userId }, "RTMP publish rejected: no authenticated dashboard session for this stream key");
+        return;
+      }
       handleGoLive(userId, ws);
       startAudioExtraction(userId);
-      if (!ws) {
-         logger.warn({ userId }, "No active dashboard WS, session started in background");
-      }
     }
   });
 
@@ -547,6 +587,7 @@ app.prepare().then(() => {
           activeStreamers.delete(userId);
         }
         const session = sessionManager.stopSession(userId);
+        saveSessionToDb(userId, session);
         sendToClient(ws, {
           type: "SESSION_STOPPED",
           reason: "OBS stream ended",
@@ -901,6 +942,23 @@ app.prepare().then(() => {
 
 async function handleGoLive(userId: string, ws?: WebSocket) {
   try {
+    // If this user already has an active session/streamer (e.g. a duplicate
+    // RTMP publish or a reconnect race), tear the old one down before
+    // starting a new one. Otherwise the previous FFmpeg process and its
+    // audioInterval leak forever and the previous session transcript is
+    // silently discarded.
+    if (activeStreamers.has(userId)) {
+      logger.warn({ userId }, "handleGoLive: stopping existing streamer before restart");
+      activeStreamers.get(userId)!.stop();
+      activeStreamers.delete(userId);
+    }
+    stopAudioExtraction(userId);
+    if (sessionManager.isActive(userId)) {
+      const prevSession = sessionManager.stopSession(userId);
+      saveSessionToDb(userId, prevSession);
+      clearPipelineState(userId);
+    }
+
     await connectToDatabase();
 
     // Verify user has Sarvam key
