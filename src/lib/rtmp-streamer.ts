@@ -14,6 +14,7 @@
 import { spawn, ChildProcess } from "child_process";
 import ffmpegPath from "ffmpeg-static";
 import { EventEmitter } from "events";
+import { logger } from "./logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,12 @@ export class RTMPStreamer extends EventEmitter {
   private maxRestartAttempts = 3;
   private audioInterval: NodeJS.Timeout | null = null;
   private audioQueue: Buffer[] = [];
+  // Set by stop() so the close handler and attemptRestart() never respawn
+  // FFmpeg after the user explicitly stopped the streamer.
+  private _stopped = false;
+  // Bound on queued audio so TTS bursts cannot grow memory without limit.
+  // ~60s of 24kHz 16-bit mono = ~2.8 MB; 200 chunks is a safe ceiling.
+  private maxAudioQueueChunks = 200;
 
   /**
    * Start the FFmpeg relay for the given channels.
@@ -97,12 +104,12 @@ export class RTMPStreamer extends EventEmitter {
    */
   start(channels: ChannelRTMPConfig[], ingestUrl: string): boolean {
     if (this._active) {
-      console.warn("[rtmp] Streamer already active");
+      logger.warn("Streamer already active");
       return false;
     }
 
     if (channels.length === 0) {
-      console.warn("[rtmp] No RTMP channels configured — skipping");
+      logger.warn("No RTMP channels configured");
       return false;
     }
 
@@ -139,7 +146,9 @@ export class RTMPStreamer extends EventEmitter {
           const fullUrl = ch.rtmpUrl.endsWith("/")
             ? `${ch.rtmpUrl}${ch.rtmpKey}`
             : `${ch.rtmpUrl}/${ch.rtmpKey}`;
-          return `[f=flv:onfail=ignore]${fullUrl}`;
+          // Escape characters that break FFmpeg filter syntax
+          const safeUrl = fullUrl.replace(/[\\';]/g, "\\$&");
+          return `[f=flv:onfail=ignore]${safeUrl}`;
         })
         .join("|");
 
@@ -193,7 +202,7 @@ export class RTMPStreamer extends EventEmitter {
         teeOutputs,
       ];
 
-      console.log(`[rtmp] Spawning FFmpeg with ${this.channels.length} destination(s)`);
+      logger.info({ destinations: this.channels.length }, "FFmpeg spawning");
       // @ts-ignore
       const ffmpegExec = ffmpegPath || "ffmpeg";
       this.ffmpegProcess = spawn(ffmpegExec, ffmpegArgs, {
@@ -232,14 +241,14 @@ export class RTMPStreamer extends EventEmitter {
         this.totalBytesPushed += bytesToWrite;
 
         if (!written && this.audioQueue.length > 0) {
-           console.warn("[rtmp] FFmpeg stdin backpressure detected (audio queue size: " + this.audioQueue.length + ")");
+           logger.warn({ queueSize: this.audioQueue.length }, "FFmpeg stdin backpressure");
         }
       }, 100);
 
       // ── Handle FFmpeg stdout (usually empty for audio) ──
       this.ffmpegProcess.stdout?.on("data", (data: Buffer) => {
         // Usually nothing here, but log if something comes
-        console.log(`[rtmp/stdout] ${data.toString().trim()}`);
+        logger.debug({ data: data.toString().trim() }, "FFmpeg stdout");
       });
 
       // ── Handle FFmpeg stderr (progress/errors) ──
@@ -248,7 +257,7 @@ export class RTMPStreamer extends EventEmitter {
 
         // Detect mono input → channelsplit failure → auto-fallback
         if (!this._monoFallback && (msg.includes("Channel layout change") || msg.includes("does not match specified channel layout") || msg.includes("channelsplit"))) {
-          console.warn(`[rtmp] Stereo filter failed (mono input detected). Restarting with mono fallback...`);
+          logger.warn("Stereo filter failed, switching to mono fallback");
           this._monoFallback = true;
           this.restartAttempts = 0; // Reset so the fallback restart isn't counted
           // We must ensure it restarts regardless of exit code.
@@ -268,18 +277,22 @@ export class RTMPStreamer extends EventEmitter {
 
         // Log only non-spammy FFmpeg output
         if (!msg.startsWith("size=") && !msg.startsWith("frame=")) {
-          console.log(`[rtmp/ffmpeg] ${msg}`);
+          logger.debug({ msg }, "FFmpeg stderr");
         }
       });
 
       // ── Handle FFmpeg exit ──
       this.ffmpegProcess.on("close", (code) => {
-        console.log(`[rtmp] FFmpeg exited with code ${code}`);
+        logger.info({ code }, "FFmpeg exited");
         this._active = false;
         this.ffmpegProcess = null;
         if (this.audioInterval) clearInterval(this.audioInterval);
 
-        if (code !== 0 && code !== null) {
+        if (this._stopped) {
+          // Explicitly stopped — do not restart under any circumstance.
+          this.updateAllChannelStatuses("stopped");
+          this.emit("stopped");
+        } else if (code !== 0 && code !== null) {
           // Attempt restart on unexpected exit
           this.attemptRestart();
         } else if ((this as any)._fallbackRestarting) {
@@ -293,7 +306,7 @@ export class RTMPStreamer extends EventEmitter {
       });
 
       this.ffmpegProcess.on("error", (err) => {
-        console.error("[rtmp] FFmpeg process error:", err);
+        logger.error({ err }, "FFmpeg process error");
         this._active = false;
         this.updateAllChannelStatuses("error", err.message);
         this.emit("error", err);
@@ -309,7 +322,7 @@ export class RTMPStreamer extends EventEmitter {
 
       return true;
     } catch (err) {
-      console.error("[rtmp] Failed to spawn FFmpeg:", err);
+      logger.error({ err }, "FFmpeg spawn failed");
       this._active = false;
       return false;
     }
@@ -329,12 +342,17 @@ export class RTMPStreamer extends EventEmitter {
       const pcmBuffer = stripWavHeader(wavBuffer);
 
       if (pcmBuffer.length > 0) {
+        // Backpressure: if the queue is full, drop the oldest chunk rather
+        // than growing memory without bound under TTS burst conditions.
+        if (this.audioQueue.length >= this.maxAudioQueueChunks) {
+          this.audioQueue.shift();
+        }
         this.audioQueue.push(pcmBuffer);
       }
 
       return true;
     } catch (err) {
-      console.error("[rtmp] Error pushing audio:", err);
+      logger.error({ err }, "Push audio failed");
       return false;
     }
   }
@@ -346,9 +364,11 @@ export class RTMPStreamer extends EventEmitter {
   stop(): void {
     if (!this.ffmpegProcess) return;
 
-    console.log(`[rtmp] Stopping FFmpeg (${this.totalBytesPushed} bytes pushed total)`);
+    logger.info({ bytesPushed: this.totalBytesPushed }, "FFmpeg stopping");
     this._active = false;
+    this._stopped = true; // prevent close handler / attemptRestart from respawning
     if (this.audioInterval) clearInterval(this.audioInterval);
+    this.audioQueue = []; // free queued audio immediately
 
     try {
       // Close stdin to signal end-of-input
@@ -370,7 +390,7 @@ export class RTMPStreamer extends EventEmitter {
         }
       }, 1000);
     } catch (err) {
-      console.error("[rtmp] Error stopping FFmpeg:", err);
+      logger.error({ err }, "FFmpeg stop failed");
       this.ffmpegProcess?.kill("SIGKILL");
       this.ffmpegProcess = null;
     }
@@ -384,8 +404,9 @@ export class RTMPStreamer extends EventEmitter {
    * Exponential backoff with a maximum of 3 attempts.
    */
   private attemptRestart(): void {
+    if (this._stopped) return;
     if (this.restartAttempts >= this.maxRestartAttempts) {
-      console.error(`[rtmp] Max restart attempts (${this.maxRestartAttempts}) exceeded`);
+      logger.error({ maxAttempts: this.maxRestartAttempts }, "FFmpeg max restart attempts exceeded");
       this.updateAllChannelStatuses("error", "FFmpeg crashed — max retries exceeded");
       this.emit("error", new Error("FFmpeg max restart attempts exceeded"));
       return;
@@ -393,7 +414,7 @@ export class RTMPStreamer extends EventEmitter {
 
     this.restartAttempts++;
     const delay = 1000 * this.restartAttempts; // 1s, 2s, 3s
-    console.log(`[rtmp] Restarting FFmpeg (attempt ${this.restartAttempts}/${this.maxRestartAttempts}) in ${delay}ms`);
+    logger.info({ attempt: this.restartAttempts, maxAttempts: this.maxRestartAttempts, delay }, "FFmpeg restarting");
 
     this.updateAllChannelStatuses("connecting");
 
@@ -423,7 +444,7 @@ export class RTMPStreamer extends EventEmitter {
     }
 
     // Generic error — mark all channels
-    console.warn("[rtmp] Could not attribute error to specific channel:", errorMsg);
+    logger.warn({ error: errorMsg }, "Unattributed FFmpeg error");
   }
 
   /**

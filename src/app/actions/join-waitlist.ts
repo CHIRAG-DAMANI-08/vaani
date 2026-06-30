@@ -1,8 +1,10 @@
 "use server";
 
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 import { connectToDatabase } from "@/lib/mongodb";
 import { WaitlistEntry } from "@/lib/models/waitlist-entry";
+import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -17,13 +19,25 @@ export type WaitlistResponse =
   | { ok: true; state: "success"; message: "You're on the waitlist." }
   | { ok: true; state: "duplicate"; message: "You're already on the waitlist." }
   | { ok: false; state: "validation_error"; message: "Enter a valid email." }
-  | { ok: false; state: "server_error"; message: "Something went wrong. Please try again." };
+  | { ok: false; state: "server_error"; message: "Something went wrong. Please try again." | "Too many attempts. Please try again later." };
 
 export async function joinWaitlist(
   _prevState: WaitlistResponse | null,
   formData: FormData
 ): Promise<WaitlistResponse> {
-  const emailFieldValue = formData.get("email");
+  // Rate limit: 5 submissions per minute per email
+  const emailRaw = formData.get("email");
+  const email = typeof emailRaw === "string" ? emailRaw.trim().toLowerCase() : "";
+  const rl = rateLimit(`waitlist:${email}`, { maxRequests: 5, windowMs: 60 * 1000 });
+  if (!rl.allowed) {
+    return {
+      ok: false,
+      state: "server_error",
+      message: "Too many attempts. Please try again later.",
+    };
+  }
+
+  const emailFieldValue = emailRaw;
   const nameFieldValue = formData.get("name");
   
   const parsed = schema.safeParse({
@@ -68,7 +82,7 @@ export async function joinWaitlist(
     }
 
     // Log the actual server error to the console for debugging
-    console.error("Waitlist error:", error);
+    logger.error({ err: error }, "Waitlist join failed");
     
     return {
       ok: false,

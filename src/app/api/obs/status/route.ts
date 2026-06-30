@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/lib/models/user";
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
       updatedAt: user.obsCredentialsUpdatedAt,
     });
   } catch (error) {
-    console.error(`[obs/status] Failed to fetch for user ${userId}:`, error);
+    logger.error({ err: error, userId }, "OBS status check failed");
     return NextResponse.json(
       { error: "INTERNAL_ERROR", message: "Something went wrong." },
       { status: 500 }

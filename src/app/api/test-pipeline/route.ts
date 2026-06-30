@@ -1,29 +1,11 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/lib/models/user";
 import { translateText, textToSpeech, LANG_MAP } from "@/lib/sarvam-pipeline";
-import crypto from "crypto";
-
-function decryptValue(encryptedStr: string): string | null {
-  if (!encryptedStr) return null;
-  const keyHex = process.env.ENCRYPTION_KEY;
-  if (!keyHex || keyHex.length !== 64) return null;
-  try {
-    const key = Buffer.from(keyHex, "hex");
-    const [ivB64, authTagB64, ciphertextB64] = encryptedStr.split(":");
-    const iv = Buffer.from(ivB64, "base64");
-    const authTag = Buffer.from(authTagB64, "base64");
-    const ciphertext = Buffer.from(ciphertextB64, "base64");
-    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-    decipher.setAuthTag(authTag);
-    let plaintext = decipher.update(ciphertext, undefined, "utf8");
-    plaintext += decipher.final("utf8");
-    return plaintext;
-  } catch {
-    return null;
-  }
-}
+import { decryptKey } from "@/lib/encryption";
+import { validateCSRF } from "@/lib/csrf";
 
 /**
  * POST /api/test-pipeline
@@ -38,6 +20,10 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  if (!(await validateCSRF(req))) {
+    return NextResponse.json({ error: "CSRF_FAILED" }, { status: 403 });
   }
 
   let body: {
@@ -79,7 +65,7 @@ export async function POST(req: Request) {
     if (!user?.sarvamKeyEnc) {
       return NextResponse.json({ error: "NO_API_KEY" }, { status: 403 });
     }
-    const apiKey = decryptValue(user.sarvamKeyEnc);
+    const apiKey = decryptKey(user.sarvamKeyEnc);
     if (!apiKey) {
       return NextResponse.json({ error: "KEY_DECRYPT_FAILED" }, { status: 500 });
     }
@@ -131,7 +117,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    console.error("[test-pipeline] Error:", err);
+    logger.error({ err }, "Test pipeline failed");
     return NextResponse.json({ error: "PIPELINE_FAILED" }, { status: 500 });
   }
 }

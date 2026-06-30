@@ -77,8 +77,6 @@ export const PlatformStack = () => {
   const headingOpacity = useTransform(smoothProgress, [0, 0.05], [0, 1]);
 
   const sharedGlassStyle = {
-    width: 320,
-    height: 320,
     borderRadius: 28,
     background:
       "linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.12) 100%)",
@@ -93,7 +91,7 @@ export const PlatformStack = () => {
 
   return (
     <section id="platform" ref={containerRef} className="relative h-[400vh]">
-      <div className="sticky top-0 h-screen flex flex-col items-center justify-center overflow-hidden">
+      <div className="sticky top-0 min-h-[100dvh] md:h-screen flex flex-col items-center justify-center overflow-hidden pt-24 pb-12 md:py-0">
         <div className="w-full max-w-6xl mx-auto px-6">
           {/* Top label */}
           <motion.p
@@ -111,11 +109,11 @@ export const PlatformStack = () => {
             How Vaani Works
           </motion.h2>
 
-          <div className="flex flex-col md:flex-row gap-12 lg:gap-24 items-center">
+          <div className="flex flex-col md:flex-row gap-8 md:gap-12 lg:gap-24 items-center">
             {/* LEFT: Gradient card with stacked glass diamonds */}
             <div className="w-full md:w-[60%] flex justify-center">
               <motion.div
-                className="relative w-full max-w-[700px] aspect-[4/3] rounded-[32px] overflow-hidden shadow-sm"
+                className="relative w-[90%] md:w-full max-w-[700px] aspect-[16/11] md:aspect-[4/3] rounded-[32px] overflow-hidden shadow-sm"
                 style={{
                   background: useTransform(
                     gradBottom,
@@ -135,14 +133,14 @@ export const PlatformStack = () => {
                         opacity: diamond1Opacity,
                         y: diamond1Y,
                         position: "absolute",
-                        left: "50%",
-                        top: "50%",
-                        marginLeft: -160,
-                        marginTop: -220,
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                         zIndex: 3,
                       }}
                     >
-                      <div style={sharedGlassStyle} />
+                      <div className="w-[45vw] h-[45vw] md:w-[320px] md:h-[320px] -mt-[40px] md:-mt-[120px]" style={sharedGlassStyle} />
                     </motion.div>
 
                     {/* Diamond 2 (middle, pushes up underneath layer 1) */}
@@ -150,14 +148,15 @@ export const PlatformStack = () => {
                       style={{
                         y: diamond2Y,
                         position: "absolute",
-                        left: "50%",
-                        top: "50%",
-                        marginLeft: -160,
-                        marginTop: -160,
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                         zIndex: 2,
                       }}
                     >
                       <div
+                        className="w-[45vw] h-[45vw] md:w-[320px] md:h-[320px]"
                         style={{
                           ...sharedGlassStyle,
                           background:
@@ -171,14 +170,15 @@ export const PlatformStack = () => {
                       style={{
                         y: diamond3Y,
                         position: "absolute",
-                        left: "50%",
-                        top: "50%",
-                        marginLeft: -160,
-                        marginTop: -100,
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                         zIndex: 1,
                       }}
                     >
                       <div
+                        className="w-[45vw] h-[45vw] md:w-[320px] md:h-[320px] mt-[40px] md:mt-[120px]"
                         style={{
                           ...sharedGlassStyle,
                           background:
@@ -192,7 +192,7 @@ export const PlatformStack = () => {
             </div>
 
             {/* RIGHT: Text content that swaps with fade */}
-            <div className="relative w-full md:w-[40%] min-h-[300px]">
+            <div className="relative w-full md:w-[40%] min-h-[220px] md:min-h-[300px]">
               {sections.map((section, index) => {
                 const opacityVal =
                   index === 0

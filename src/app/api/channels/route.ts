@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Channel, SUPPORTED_LANGUAGES } from "@/lib/models/channel";
+import { validateCSRF } from "@/lib/csrf";
+import { encryptKey, decryptKey } from "@/lib/encryption";
 
 /**
  * GET /api/channels
@@ -38,7 +41,7 @@ export async function GET() {
 
     return NextResponse.json({ channels }, { status: 200 });
   } catch (error) {
-    console.error(`[channels] GET failed for user ${userId}:`, error);
+    logger.error({ err: error, userId }, "Channels GET failed");
     return NextResponse.json(
       { error: "INTERNAL_ERROR", message: "Something went wrong." },
       { status: 500 }
@@ -55,6 +58,11 @@ export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  // CSRF check
+  if (!(await validateCSRF(request))) {
+    return NextResponse.json({ error: "CSRF_FAILED" }, { status: 403 });
   }
 
   let body: { languageId?: string; rtmpKey?: string; rtmpUrl?: string; enabled?: boolean };
@@ -88,8 +96,27 @@ export async function POST(request: Request) {
       script: lang.script,
     };
 
-    if (rtmpKey !== undefined) updateData.rtmpKey = rtmpKey || null;
-    if (rtmpUrl !== undefined) updateData.rtmpUrl = rtmpUrl || null;
+    if (rtmpKey !== undefined) updateData.rtmpKey = rtmpKey ? encryptKey(rtmpKey) : null;
+    if (rtmpUrl !== undefined) {
+      // Validate RTMP URL protocol
+      if (rtmpUrl) {
+        try {
+          const parsed = new URL(rtmpUrl);
+          if (parsed.protocol !== "rtmp:" && parsed.protocol !== "rtmps:") {
+            return NextResponse.json(
+              { error: "INVALID_URL", message: "rtmpUrl must use rtmp:// or rtmps://" },
+              { status: 400 }
+            );
+          }
+        } catch {
+          return NextResponse.json(
+            { error: "INVALID_URL", message: "rtmpUrl is not a valid URL" },
+            { status: 400 }
+          );
+        }
+      }
+      updateData.rtmpUrl = rtmpUrl || null;
+    }
     if (enabled !== undefined) updateData.enabled = enabled;
 
     const channel = await Channel.findOneAndUpdate(
@@ -98,7 +125,7 @@ export async function POST(request: Request) {
       { upsert: true, new: true }
     );
 
-    console.log(`[channels] Upserted ${lang.id} for user ${userId}`);
+    logger.info({ userId, languageId: lang.id }, "Channel upserted");
 
     return NextResponse.json(
       {
@@ -115,7 +142,7 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error(`[channels] POST failed for user ${userId}:`, error);
+    logger.error({ err: error, userId }, "Channels POST failed");
     return NextResponse.json(
       { error: "INTERNAL_ERROR", message: "Something went wrong." },
       { status: 500 }
@@ -132,6 +159,11 @@ export async function DELETE(request: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  // CSRF check
+  if (!(await validateCSRF(request))) {
+    return NextResponse.json({ error: "CSRF_FAILED" }, { status: 403 });
   }
 
   let body: { languageId?: string };
@@ -158,11 +190,11 @@ export async function DELETE(request: Request) {
       languageId: body.languageId,
     });
 
-    console.log(`[channels] Deleted ${body.languageId} for user ${userId}`);
+    logger.info({ userId, languageId: body.languageId }, "Channel deleted");
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error(`[channels] DELETE failed for user ${userId}:`, error);
+    logger.error({ err: error, userId }, "Channels DELETE failed");
     return NextResponse.json(
       { error: "INTERNAL_ERROR", message: "Something went wrong." },
       { status: 500 }

@@ -55,6 +55,9 @@ export function encryptKey(plaintext: string): string {
  * Used in Sprint 6+ when making actual Sarvam API calls.
  */
 export function decryptKey(encryptedString: string): string {
+  if (!encryptedString) {
+    throw new Error("Cannot decrypt empty value");
+  }
   const key = getEncryptionKey();
   const parts = encryptedString.split(":");
 

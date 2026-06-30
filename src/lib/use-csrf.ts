@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { logger } from "./logger";
 
 /**
  * Hook that fetches a CSRF token from /api/csrf on mount
@@ -17,7 +18,7 @@ export function useCSRF() {
         setCsrfToken(data.csrfToken);
       }
     } catch (err) {
-      console.error("[csrf] Failed to fetch token:", err);
+      logger.warn({ err }, "CSRF token fetch failed");
     }
   }, []);
 

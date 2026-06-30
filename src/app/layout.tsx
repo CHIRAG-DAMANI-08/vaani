@@ -38,7 +38,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Vaani - Real-Time Multilingual Streaming",
   description:
-    "Real-time multilingual translation for live streamers. Reach Hindi, Tamil, Telugu & Marathi audiences instantly.",
+    "Real-time multilingual translation for live streamers. Reach Hindi, Tamil, Telugu & Kannada audiences instantly.",
 };
 
 export default function RootLayout({
@@ -46,13 +46,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  console.log("RootLayout: Clerk Key:", process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  // removed: was logging credential in production
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${inter.variable} ${playfair.variable} ${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
     >
-      <body className="min-h-screen bg-[var(--background)] text-[var(--foreground)] font-sans">
+      <body suppressHydrationWarning className="min-h-screen bg-[var(--background)] text-[var(--foreground)] font-sans">
         <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
           {children}
         </ClerkProvider>

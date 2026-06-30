@@ -1,6 +1,7 @@
 "use client";
 
 import { useSignIn, useAuth } from "@clerk/nextjs";
+import { logger } from "@/lib/logger";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
@@ -24,7 +25,7 @@ export default function SignInPage() {
     const { error } = await signIn.password({ emailAddress, password });
 
     if (error) {
-      console.error(JSON.stringify(error, null, 2));
+      logger.error({ err: error }, "Auth failed");
       return;
     }
 
@@ -32,7 +33,7 @@ export default function SignInPage() {
       await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) {
-            console.log(session?.currentTask);
+            // debug probe removed;
             return;
           }
           const url = decorateUrl("/dashboard");
@@ -62,7 +63,7 @@ export default function SignInPage() {
       await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) {
-            console.log(session?.currentTask);
+            // debug probe removed;
             return;
           }
           const url = decorateUrl("/dashboard");
@@ -87,11 +88,11 @@ export default function SignInPage() {
         redirectCallbackUrl: "/sso-callback",
       });
       if (error) {
-        console.error("Google OAuth error:", error);
+        logger.error({ err: error }, "Google OAuth error");
         setOauthError("Failed to start Google sign in. Please try again.");
       }
     } catch (err) {
-      console.error("Google OAuth exception:", err);
+      logger.error({ err }, "Google OAuth exception");
       setOauthError("Failed to start Google sign in. Please try again.");
     } finally {
       setGoogleLoading(false);

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/lib/models/user";
 import { sanitizeKey } from "@/lib/sanitize-key";
+import { logger } from "@/lib/logger";
 import { validateSarvamKey } from "@/lib/sarvam";
 import { encryptKey } from "@/lib/encryption";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/rate-limit";
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
   // 5. Sanitize key
   const sanitized = sanitizeKey(body.key);
   if (!sanitized.ok) {
-    console.log(`[key/validate] Sanitization failed for user ${userId}: ${sanitized.code}`);
+    logger.warn({ userId, code: sanitized.code }, "Key sanitization failed");
     return NextResponse.json(
       { error: sanitized.code, message: sanitized.message },
       { status: 400 }
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
   // 6. Validate with Sarvam
   const sarvamResult = await validateSarvamKey(sanitized.key);
   if (!sarvamResult.valid) {
-    console.log(`[key/validate] Sarvam rejected key for user ${userId}: ${sarvamResult.error}`);
+    logger.warn({ userId, reason: sarvamResult.error }, "Key rejected by Sarvam");
 
     if (sarvamResult.error === "KEY_INVALID") {
       return NextResponse.json(
@@ -102,14 +103,14 @@ export async function POST(request: Request) {
       { upsert: true, new: true }
     );
 
-    console.log(`[key/validate] Key stored successfully for user ${userId}`);
+    logger.info({ userId }, "Key stored successfully");
 
     return NextResponse.json(
       { success: true },
       { status: 200, headers: rateLimitHeaders(rateResult) }
     );
   } catch (error) {
-    console.error(`[key/validate] Storage failed for user ${userId}:`, error);
+    logger.error({ err: error, userId }, "Key storage failed");
     return NextResponse.json(
       { error: "INTERNAL_ERROR", message: "Something went wrong. Please try again." },
       { status: 500 }

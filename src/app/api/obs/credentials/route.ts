@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/lib/models/user";
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(`[obs/credentials] POST error for ${userId}:`, error);
+    logger.error({ err: error, userId }, "OBS credentials save failed");
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
@@ -170,7 +171,7 @@ export async function DELETE(request: Request) {
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(`[obs/credentials] DELETE error for ${userId}:`, error);
+    logger.error({ err: error, userId }, "OBS credentials delete failed");
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }

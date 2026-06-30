@@ -10,6 +10,7 @@
  */
 
 import { LANG_MAP } from "./language-registry";
+import { logger } from "./logger";
 export { LANG_MAP } from "./language-registry";
 
 const SARVAM_BASE = "https://api.sarvam.ai";
@@ -333,7 +334,7 @@ export async function runPipeline(
     onStageUpdate?.("stream", "done", { count: ttsOutputs.length });
   } catch (err: unknown) {
     error = err instanceof Error ? err.message : "Pipeline failed";
-    console.error("[pipeline] Error:", error);
+    logger.error({ err: error }, "Pipeline stage failed");
   }
 
   return {

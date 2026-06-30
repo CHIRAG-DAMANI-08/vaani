@@ -14,9 +14,11 @@ type PoolConfig = {
   windowMs: number;
 };
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const POOLS: Record<string, PoolConfig> = {
-  "key-mutation": { maxRequests: 5, windowMs: 10 * 1000 }, // 5 per 10 sec (dev — change to 15 min for prod)
-  "key-delete": { maxRequests: 10, windowMs: 10 * 1000 }, // 10 per 10 sec (dev — change to 1 hr for prod)
+  "key-mutation": { maxRequests: 5, windowMs: isDev ? 10 * 1000 : 15 * 60 * 1000 },
+  "key-delete": { maxRequests: 10, windowMs: isDev ? 10 * 1000 : 60 * 60 * 1000 },
 };
 
 // Storage: Map<"userId:pool", timestamp[]>

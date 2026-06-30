@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { logger } from "@/lib/logger";
 import { Check, Loader2, AlertCircle, Trash2, X, Activity } from "lucide-react";
 import OBSWebSocket from "obs-websocket-js";
 
@@ -41,7 +42,7 @@ export function OBSConnectionSection({
         setObsStatus(data);
       }
     } catch (err) {
-      console.error("[settings] Failed to fetch OBS status:", err);
+      logger.error({ err }, "OBS status fetch failed");
     } finally {
       setLoading(false);
     }

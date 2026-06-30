@@ -49,14 +49,6 @@ export const LANGUAGE_REGISTRY: LanguageEntry[] = [
     defaultSpeaker: "arjun",
   },
   {
-    id: "mr",
-    bcp47: "mr-IN",
-    name: "Marathi",
-    nativeName: "मराठी",
-    flag: "🇮🇳",
-    defaultSpeaker: "amol",
-  },
-  {
     id: "bn",
     bcp47: "bn-IN",
     name: "Bengali",
