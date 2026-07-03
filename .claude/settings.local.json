@@ -43,7 +43,8 @@
       "Bash(Remove-Item -Recurse -Force C:\\\\Code\\\\vaani\\\\.next)",
       "Bash(git add:*)",
       "Bash(git worktree:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
