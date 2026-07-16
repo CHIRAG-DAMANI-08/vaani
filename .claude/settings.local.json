@@ -49,7 +49,23 @@
       "Bash(grep -r \"test.*mode\" --include=\"*.ts\" --include=\"*.tsx\" /c/Code/vaani/src/app 2>/dev/null | head -20)",
       "Bash(bd ready:*)",
       "Bash(bd list:*)",
-      "Bash(git rmdir:*)"
+      "Bash(git rmdir:*)",
+      "Bash(bd create:*)",
+      "Bash(bd close:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -sL \"https://api.github.com/repos/CHIRAG-DAMANI-08/vaani--landing/contents\" 2>/dev/null | head -100)",
+      "Bash(curl -sL \"https://api.github.com/repos/CHIRAG-DAMANI-08/vaani--landing/contents/frontend\" 2>/dev/null | grep -E '\"name\"|\"type\"' | head -40)",
+      "Bash(curl -sL \"https://api.github.com/repos/CHIRAG-DAMANI-08/vaani--landing/contents/frontend/src\" 2>/dev/null | grep -E '\"name\"|\"type\"' | head -30)",
+      "Bash(curl -sL \"https://api.github.com/repos/CHIRAG-DAMANI-08/vaani--landing/contents/frontend/src/components\" 2>/dev/null | grep -E '\"name\"|\"type\"' | head -50)",
+      "Bash(curl -sL \"https://api.github.com/repos/CHIRAG-DAMANI-08/vaani--landing/contents/frontend/src/components/landing\" 2>/dev/null | grep -E '\"name\"|\"type\"' | head -50)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/CHIRAG-DAMANI-08/vaani--landing/main/frontend/src/components/landing/Hero.jsx\" 2>/dev/null)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/CHIRAG-DAMANI-08/vaani--landing/main/frontend/src/components/landing/CTA.jsx\" 2>/dev/null)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/CHIRAG-DAMANI-08/vaani--landing/main/frontend/src/components/landing/Solution.jsx\" 2>/dev/null)",
+      "Bash(cat /tmp/vaani-landing-clone/vaani--landing/frontend/src/lib/motion.js 2>/dev/null || cat /tmp/vaani-landing-clone/vaani--landing/frontend/src/lib/*.js 2>/dev/null | head -100)",
+      "Bash(npm ls:*)"
     ]
+  },
+  "enabledPlugins": {
+    "ruflo-workflows@ruflo": true
   }
 }

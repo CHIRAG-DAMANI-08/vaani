@@ -1,14 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
+import { motion } from "framer-motion";
+import { Menu, X, Globe, ExternalLink, MessageCircle } from "lucide-react";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
-import {
-  Menu,
-  X,
-} from "lucide-react";
-import { navLinks } from "./landing-content";
+import Link from "next/link";
+
+const navLinks = [
+  { label: "Home", href: "#home" },
+  { label: "How It Works", href: "#how-it-works" },
+  { label: "Pipeline", href: "#pipeline" },
+  { label: "Use Cases", href: "#use-cases" },
+];
+
+const socials = [
+  { Icon: Globe, label: "global" },
+  { Icon: ExternalLink, label: "docs" },
+  { Icon: MessageCircle, label: "discord" },
+];
 
 export const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -22,145 +31,115 @@ export const Navbar = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Render a minimal shell on the server / before hydration to avoid mismatch
-  const authButtons = mounted ? (
-    <>
-      <Show when="signed-out">
-        <button
-          onClick={(e) => { e.preventDefault(); window.dispatchEvent(new Event("open-waitlist")); }}
-          className="px-5 py-2.5 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] active:scale-95 transition-all duration-200 shadow-sm"
-          style={{ fontFamily: "var(--font-syne)" }}
-        >
-          Join the waitlist
-        </button>
-        <SignInButton>
-          <button
-            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-full hover:bg-gray-50 active:scale-95 transition-all duration-200 shadow-sm"
-            style={{ fontFamily: "var(--font-syne)" }}
-          >
-            Sign in
-          </button>
-        </SignInButton>
-      </Show>
-      <Show when="signed-in">
-        <Link
-          href="/dashboard"
-          className="px-5 py-2.5 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] active:scale-95 transition-all duration-200 shadow-sm"
-          style={{ fontFamily: "var(--font-syne)" }}
-        >
-          Dashboard
-        </Link>
-        <UserButton />
-      </Show>
-    </>
-  ) : null;
-
-  const mobileAuthButtons = mounted ? (
-    <>
-      <Show when="signed-out">
-        <button
-          onClick={(e) => { e.preventDefault(); setMobileOpen(false); window.dispatchEvent(new Event("open-waitlist")); }}
-          className="px-5 py-3 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] text-center shadow-sm"
-        >
-          Join the waitlist
-        </button>
-        <SignInButton>
-          <button className="px-5 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-full text-center hover:bg-gray-50 shadow-sm">
-            Sign in
-          </button>
-        </SignInButton>
-      </Show>
-      <Show when="signed-in">
-        <Link
-          href="/dashboard"
-          className="px-5 py-3 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] text-center shadow-sm"
-          onClick={() => setMobileOpen(false)}
-        >
-          Dashboard
-        </Link>
-      </Show>
-    </>
-  ) : null;
-
   return (
     <motion.nav
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-[1200px] transition duration-300 ${
-        scrolled
-          ? "bg-white/90 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-200"
-          : "bg-white/80 backdrop-blur-md border border-gray-200"
-      } ${mobileOpen ? "rounded-3xl" : "rounded-full"}`}
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+      className={`fixed top-0 left-0 right-0 z-50 px-8 md:px-28 py-4 transition-all duration-300 ${
+        scrolled ? "bg-white/90 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border-b border-gray-200" : "bg-white/80 backdrop-blur-md border-b border-gray-200"
+      }`}
+      data-testid="navbar"
     >
-      <div className="flex items-center justify-between px-6 py-3">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <span
-            className="text-2xl font-bold tracking-tight text-gray-900"
-            style={{ fontFamily: "var(--font-syne)" }}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-10">
+          <Link
+            href="#home"
+            className="flex items-center gap-2.5"
+            data-testid="navbar-logo"
           >
-            vaani
-          </span>
-        </Link>
+            <span className="text-2xl font-bold text-gray-900" style={{ fontFamily: "var(--font-playfair)" }}>
+              vaani
+            </span>
+          </Link>
 
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-2 text-sm">
+            {navLinks.map((link, i) => (
+              <div key={link.label} className="flex items-center gap-2">
+                <Link
+                  href={link.href}
+                  className="text-muted-foreground hover:text-foreground transition-colors duration-300"
+                  data-testid={`nav-link-${i}`}
+                >
+                  {link.label}
+                </Link>
+                {i < navLinks.length - 1 && (
+                  <span className="text-muted-foreground/40">•</span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <Show when="signed-out">
+            <button
+              onClick={(e) => { e.preventDefault(); window.dispatchEvent(new Event("open-waitlist")); }}
+              className="px-5 py-2.5 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] active:scale-95 transition-all duration-200 shadow-sm"
+              style={{ fontFamily: "var(--font-syne)" }}
+            >
+              Join the waitlist
+            </button>
+          </Show>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
+            {socials.map(({ Icon, label }) => (
+              <a
+                key={label}
+                href="#"
+                aria-label={label}
+                data-testid={`social-${label}`}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors duration-300"
+              >
+                <Icon className="w-4 h-4" strokeWidth={1.5} />
+              </a>
+            ))}
+          </div>
+
+          <Show when="signed-in">
+            <Link
+              href="/dashboard"
+              className="px-5 py-2.5 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] active:scale-95 transition-all duration-200 shadow-sm"
+              style={{ fontFamily: "var(--font-syne)" }}
+            >
+              Dashboard
+            </Link>
+            <UserButton />
+          </Show>
+
+          <button
+            className="lg:hidden p-2 rounded-full text-gray-800 hover:bg-gray-100 transition-colors"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      <div className={`lg:hidden transition-all duration-300 ${mobileOpen ? "max-h-96 pb-4" : "max-h-0 overflow-hidden"}`}>
+        <div className="flex flex-col gap-2 mt-3">
           {navLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}
-              className="px-4 py-2 text-sm font-medium tracking-wide uppercase text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 rounded-full transition-all duration-200"
+              className="px-4 py-3 text-sm font-medium tracking-wide uppercase text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
+              onClick={() => setMobileOpen(false)}
             >
               {link.label}
             </Link>
           ))}
+          <Show when="signed-out">
+            <button
+              onClick={(e) => { e.preventDefault(); setMobileOpen(false); window.dispatchEvent(new Event("open-waitlist")); }}
+              className="px-5 py-3 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] text-center shadow-sm"
+            >
+              Join the waitlist
+            </button>
+          </Show>
         </div>
-
-        {/* CTA Buttons */}
-        <div className="hidden md:flex items-center gap-3">
-          {authButtons}
-        </div>
-
-        {/* Mobile Menu Toggle */}
-        <button
-          className="md:hidden p-2 rounded-full text-gray-800 hover:bg-gray-100 transition-colors"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
       </div>
-
-      {/* Mobile Menu */}
-      <AnimatePresence mode="wait">
-        {mobileOpen && (
-          <motion.div
-            key="mobile-menu"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="md:hidden overflow-hidden"
-          >
-            <div className="px-6 pb-5 pt-2 flex flex-col gap-2">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className="px-4 py-3 text-sm font-medium tracking-wide uppercase text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <div className="flex flex-col gap-2 mt-3">
-                {mobileAuthButtons}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.nav>
   );
 };
