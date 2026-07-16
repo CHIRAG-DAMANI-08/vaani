@@ -1,15 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-
-const logos = [
-  "4 Languages Output",
-  "500M+ Regional Viewers",
-  "~5s Translation Latency",
-  "₹0 To Get Started",
-  "Simultaneous Broadcasting",
-  "Zero OBS Changes",
-];
+import { marqueeItems } from "./landing-content";
 
 export const LogoMarquee = () => {
   return (
@@ -29,7 +21,7 @@ export const LogoMarquee = () => {
         <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#F5F5F0] to-transparent z-10" />
 
         <div className="flex animate-marquee">
-          {[...logos, ...logos].map((logo, i) => (
+          {[...marqueeItems, ...marqueeItems].map((logo, i) => (
             <div
               key={`${logo}-${i}`}
               className="flex-shrink-0 mx-8 flex items-center justify-center h-12 min-w-[140px]"

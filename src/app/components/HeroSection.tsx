@@ -1,8 +1,7 @@
 "use client";
 
-
 import { motion } from "framer-motion";
-import Link from "next/link";
+import { heroHeadings } from "./landing-content";
 
 export const HeroSection = () => {
   return (
@@ -42,7 +41,12 @@ export const HeroSection = () => {
         className="relative z-10 text-5xl md:text-7xl lg:text-[5.5rem] font-normal text-center leading-[1.1] tracking-tight mb-6"
         style={{ fontFamily: "var(--font-playfair)" }}
       >
-        Speak one language.<br/>
+        {heroHeadings.main.split("\n").map((line, i) => (
+          <span key={i}>
+            {line}
+            {i < heroHeadings.main.split("\n").length - 1 && <br />}
+          </span>
+        ))}
         <span className="text-gradient font-semibold">Reach every audience.</span>
       </motion.h1>
 
@@ -53,7 +57,7 @@ export const HeroSection = () => {
         transition={{ duration: 0.6, delay: 0.4 }}
         className="relative z-10 text-base md:text-xl text-muted text-center max-w-2xl leading-relaxed"
       >
-        Vaani lets live streamers broadcast in Hindi, Tamil, Telugu, and Kannada simultaneously — in real time — from a single OBS setup.
+        {heroHeadings.subtitle}
       </motion.p>
     </section>
   );

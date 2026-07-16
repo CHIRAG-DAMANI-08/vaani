@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
+import { ctaContent } from "./landing-content";
 
 export const CTABanner = () => {
   return (
@@ -31,9 +31,7 @@ export const CTABanner = () => {
             className="relative z-10 text-3xl md:text-5xl lg:text-6xl font-normal leading-tight mb-8"
             style={{ fontFamily: "var(--font-playfair)" }}
           >
-            Stream once. Reach everyone
-            <br />
-            with Vaani.
+            {ctaContent.heading}
           </h2>
 
           <button
@@ -41,7 +39,7 @@ export const CTABanner = () => {
             className="relative z-10 inline-flex items-center px-8 py-4 text-base font-medium text-white bg-[#131313] rounded-full hover:bg-[#2a2a2a] active:scale-95 transition-all duration-200 shadow-[0_4px_24px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]"
             style={{ fontFamily: "var(--font-playfair)" }}
           >
-            Join the waitlist
+            {ctaContent.buttonText}
           </button>
         </motion.div>
       </div>

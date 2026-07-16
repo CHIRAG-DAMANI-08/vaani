@@ -1,20 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-const badges = [
-  {
-    imgSrc: "/iso.svg",
-    label: "ISO:27001",
-  },
-  {
-    imgSrc: "/aipaa.svg",
-    label: "AICPA SOC 2",
-  },
-  {
-    imgSrc: "/idr.svg",
-    label: "India Data Residency",
-  },
-];
+import { securityBadges, securityHeadings } from "./landing-content";
 
 export const SecuritySection = () => {
   return (
@@ -28,13 +15,11 @@ export const SecuritySection = () => {
           className="text-3xl md:text-5xl font-normal mb-16"
           style={{ fontFamily: "var(--font-playfair)" }}
         >
-          Creator-first reliability.
-          <br />
-          Built in from day one.
+          {securityHeadings.title}
         </motion.h2>
 
         <div className="flex flex-wrap justify-center gap-4 md:gap-10">
-          {badges.map((badge, index) => (
+          {securityBadges.map((badge, index) => (
             <motion.div
               key={badge.label}
               initial={{ opacity: 0, y: 20 }}

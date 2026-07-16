@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { joinWaitlist } from "@/app/actions/join-waitlist";
+import { waitlistContent } from "./landing-content";
 
 export const WaitlistModal = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -33,14 +34,14 @@ export const WaitlistModal = () => {
         setIsOpen(false);
       }
     };
-    
+
     if (isOpen) {
       document.body.style.overflow = "hidden";
       document.addEventListener("keydown", handleKeyDown);
     } else {
       document.body.style.overflow = "unset";
     }
-    
+
     return () => {
       document.body.style.overflow = "unset";
       document.removeEventListener("keydown", handleKeyDown);
@@ -52,14 +53,14 @@ export const WaitlistModal = () => {
     if (!email) return;
 
     setStatus("loading");
-    
+
     try {
       const formData = new FormData();
       formData.append("email", email);
       if (name) formData.append("name", name);
-      
+
       const response = await joinWaitlist(null, formData);
-      
+
       if (response.state === "duplicate") {
         setStatus("duplicate");
       } else if (response.state === "validation_error" || response.state === "server_error") {
@@ -116,16 +117,16 @@ export const WaitlistModal = () => {
                   <CheckCircle2 size={32} />
                 </div>
                 <h2 className="text-2xl font-normal mb-3" style={{ fontFamily: "var(--font-playfair)" }}>
-                  You're on the list!
+                  {waitlistContent.successTitle}
                 </h2>
                 <p className="text-muted text-sm leading-relaxed mb-8">
-                  Keep an eye on <strong>{email}</strong>. We'll send you an invite as soon as Vaani opens up for your language.
+                  {waitlistContent.successDescription.replace("{email}", `<strong>${email}</strong>`)}
                 </p>
                 <button
                   onClick={() => setIsOpen(false)}
                   className="w-full px-6 py-3.5 text-sm font-medium text-foreground bg-black/5 rounded-full hover:bg-black/10 active:scale-95 transition-all duration-200"
                 >
-                  Close window
+                  {waitlistContent.closeButtonText}
                 </button>
               </motion.div>
             ) : (
@@ -136,10 +137,10 @@ export const WaitlistModal = () => {
                 className="flex flex-col"
               >
                 <h2 id="waitlist-title" className="text-3xl font-normal mb-3 text-foreground" style={{ fontFamily: "var(--font-playfair)" }}>
-                  Join the Waitlist
+                  {waitlistContent.title}
                 </h2>
                 <p className="text-muted text-sm leading-relaxed mb-8">
-                  Get early access to our real-time multilingual streaming engine. We're prioritizing creators based on their signup date.
+                  {waitlistContent.description}
                 </p>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -153,7 +154,7 @@ export const WaitlistModal = () => {
                       id="email"
                       required
                       autoComplete="email"
-                      placeholder="creator@youtube.com"
+                      placeholder={waitlistContent.emailPlaceholder}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={status === "loading"}
@@ -163,13 +164,13 @@ export const WaitlistModal = () => {
 
                   <div className="flex flex-col gap-1.5">
                     <label htmlFor="name" className="text-xs font-semibold text-foreground/70 pl-2">
-                      First name <span className="text-muted/60 font-normal">(Optional)</span>
+                      First name <span className="text-muted/60 font-normal">{waitlistContent.nameOptional}</span>
                     </label>
                     <input
                       type="text"
                       id="name"
                       autoComplete="given-name"
-                      placeholder="Your name"
+                      placeholder={waitlistContent.namePlaceholder}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       disabled={status === "loading"}
@@ -182,13 +183,13 @@ export const WaitlistModal = () => {
                     {status === "error" && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex items-start gap-2 text-red-500 bg-red-50 p-3 rounded-xl border border-red-100 text-xs">
                         <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                        <p>Something went wrong. Please check your connection and try again.</p>
+                        <p>{waitlistContent.errorText}</p>
                       </motion.div>
                     )}
                     {status === "duplicate" && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex items-start gap-2 text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-100 text-xs">
                         <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                        <p>This email is already on the waitlist. We'll notify you when it's your turn!</p>
+                        <p>{waitlistContent.duplicateText}</p>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -202,12 +203,12 @@ export const WaitlistModal = () => {
                     {status === "loading" ? (
                       <Loader2 className="animate-spin" size={20} />
                     ) : (
-                      "Join the waitlist"
+                      waitlistContent.buttonText
                     )}
                   </button>
                 </form>
                 <p className="text-[11px] text-center text-muted/80 mt-6 px-4">
-                  By joining, you agree to our Terms of Service and Privacy Policy. We won't spam you.
+                  {waitlistContent.termsText}
                 </p>
               </motion.div>
             )}

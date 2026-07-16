@@ -2,36 +2,7 @@
 
 import { useRef } from "react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-
-const sections = [
-  {
-    title: "1. Stream normally on OBS",
-    description:
-      "Nothing changes for your English channel. Just start your stream as you normally would, using your existing setup.",
-    tags: ["OBS", "Streaming", "Zero Changes"],
-    gradientTop: "#f97316",
-    gradientBottom: "#c4b5fd",
-    diamonds: 1,
-  },
-  {
-    title: "2. Vaani Listens & Translates",
-    description:
-      "Vaani listens in real time, translates your speech, and generates natural-sounding voice in each regional language.",
-    tags: ["Translation", "TTS", "Real-Time"],
-    gradientTop: "#f97316",
-    gradientBottom: "#bbc5e4",
-    diamonds: 2,
-  },
-  {
-    title: "3. Auto-Live on YouTube",
-    description:
-      "Separate YouTube channels go live automatically for each language, reaching millions of new viewers instantly.",
-    tags: ["YouTube", "Multilingual", "Live"],
-    gradientTop: "#f97316",
-    gradientBottom: "#a3c4a8",
-    diamonds: 3,
-  },
-];
+import { platformSections } from "./landing-content";
 
 export const PlatformStack = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -193,7 +164,7 @@ export const PlatformStack = () => {
 
             {/* RIGHT: Text content that swaps with fade */}
             <div className="relative w-full md:w-[40%] min-h-[220px] md:min-h-[300px]">
-              {sections.map((section, index) => {
+              {platformSections.map((section, index) => {
                 const opacityVal =
                   index === 0
                     ? text0Opacity

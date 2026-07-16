@@ -1,30 +1,7 @@
-﻿"use client";
+"use client";
 
 import { motion } from "framer-motion";
-import { Quote } from "lucide-react";
-
-const faqs = [
-  {
-    q: "Does this affect my main English stream?",
-    a: "No. Your OBS setup and English channel are completely untouched."
-  },
-  {
-    q: "Do I need separate YouTube channels?",
-    a: "Yes — one per language. Vaani guides you through setting them up."
-  },
-  {
-    q: "How much does it cost?",
-    a: "You pay Sarvam AI directly at their standard rates (~₹12–18/hr per language). Vaani's own subscription pricing is coming soon."
-  },
-  {
-    q: "Is there a delay on language channels?",
-    a: "About 4–8 seconds. Invisible to viewers who only watch their language."
-  },
-  {
-    q: "What if one channel crashes mid-stream?",
-    a: "Other channels keep running. You get an alert on your dashboard."
-  }
-];
+import { faqs } from "./landing-content";
 
 export const TestimonialsSection = () => {
   return (

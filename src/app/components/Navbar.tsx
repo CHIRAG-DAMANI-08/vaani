@@ -8,13 +8,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
-
-const navLinks = [
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Features", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "For creators", href: "#for-creators" },
-];
+import { navLinks } from "./landing-content";
 
 export const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);

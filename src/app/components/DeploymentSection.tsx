@@ -1,24 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-
-const deployments = [
-  {
-    imgSrc: "/built-for-01.png",
-    title: "Free to start",
-    description: "Just connect your Sarvam API key",
-  },
-  {
-    imgSrc: "/built-for-02.png",
-    title: "Pay Sarvam directly",
-    description: "For AI compute (~₹12–18/hr per language)",
-  },
-  {
-    imgSrc: "/built-for-03.png",
-    title: "Vaani subscription",
-    description: "Subscription pricing coming soon",
-  },
-];
+import { deployments } from "./landing-content";
 
 export const DeploymentSection = () => {
   return (

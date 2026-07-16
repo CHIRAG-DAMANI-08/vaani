@@ -1,30 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-
-const demos = [
-  {
-    label: "Hindi Stream",
-    gradient:
-      "radial-gradient(circle, rgba(180,140,220,0.8) 0%, rgba(140,120,200,0.6) 40%, rgba(100,100,180,0.4) 70%, transparent 100%)",
-    borderColor: "rgba(180,140,220,0.6)",
-    btnBg: "bg-purple-200/60",
-  },
-  {
-    label: "Tamil Stream",
-    gradient:
-      "radial-gradient(circle, rgba(244,162,97,0.8) 0%, rgba(230,140,60,0.6) 40%, rgba(200,120,40,0.4) 70%, transparent 100%)",
-    borderColor: "rgba(244,162,97,0.6)",
-    btnBg: "bg-orange-200/60",
-  },
-  {
-    label: "Telugu Stream",
-    gradient:
-      "radial-gradient(circle, rgba(140,200,100,0.7) 0%, rgba(120,180,80,0.5) 40%, rgba(100,160,60,0.3) 70%, transparent 100%)",
-    borderColor: "rgba(140,200,100,0.5)",
-    btnBg: "bg-green-200/60",
-  },
-];
+import { demos } from "./landing-content";
 
 export const SamvaadDemo = () => {
   return (
@@ -173,4 +150,3 @@ export const SamvaadDemo = () => {
     </section>
   );
 };
-

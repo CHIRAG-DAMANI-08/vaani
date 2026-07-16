@@ -2,35 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-
-const articles = [
-  {
-    tag: "TECH",
-    title: "Powered by IndicConformer",
-    date: "IIT Madras - Speech Recognition",
-    gradient: "linear-gradient(135deg, #6a8a30 0%, #8aaa40 50%, #7a9a30 100%)",
-    label: "Indic\nConformer",
-    href: "#",
-  },
-  {
-    tag: "TECH",
-    title: "IndicTrans2",
-    date: "Translation across all 22 Indian languages",
-    gradient:
-      "linear-gradient(135deg, #e8a040 0%, #f0b860 50%, #d89030 100%)",
-    label: "Indic\nTrans2",
-    href: "#",
-  },
-  {
-    tag: "TECH",
-    title: "Sarvam Bulbul V3",
-    date: "Natural Indian voice synthesis",
-    gradient:
-      "linear-gradient(135deg, #e09040 0%, #f0a050 50%, #d08030 100%)",
-    label: "Bulbul\nV3",
-    href: "#",
-  },
-];
+import { articles } from "./landing-content";
 
 export const ResearchSection = () => {
   return (

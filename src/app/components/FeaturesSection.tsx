@@ -1,21 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-
-const features = [
-  {
-    title: "Multilingual streaming",
-    description: "Simultaneous stream in Hindi, Tamil, Telugu, and Kannada",
-  },
-  {
-    title: "Natural-sounding voices",
-    description: "Indian voices with 25+ voice options",
-  },
-  {
-    title: "Zero OBS changes",
-    description: "One button starts all language channels without modifying your setup",
-  },
-];
+import { features } from "./landing-content";
 
 export const FeaturesSection = () => {
   return (

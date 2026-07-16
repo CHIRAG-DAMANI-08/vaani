@@ -1,45 +1,7 @@
 "use client";
 
 import Link from "next/link";
-
-const footerSections = [
-  {
-    title: "Products",
-    links: [
-      { label: "Vaani Broadcaster", href: "#" },
-      { label: "Live Dashboard", href: "#" },
-      { label: "Channel Sync", href: "#" },
-    ],
-  },
-  {
-    title: "Tech",
-    links: [
-      { label: "IndicConformer", href: "#" },
-      { label: "IndicTrans2", href: "#" },
-      { label: "Sarvam Bulbul V3", href: "#" },
-      { label: "Connect your APIs", href: "#" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { label: "About us", href: "#" },
-      { label: "Blogs", href: "#" },
-      { label: "Discord", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Terms of service", href: "#" },
-      { label: "Privacy policy", href: "#" },
-    ],
-  },
-  {
-    title: "Socials",
-    links: [
-      { label: "LinkedIn", href: "#" },
-      { label: "X", href: "#" },
-      { label: "YouTube", href: "#" },
-    ],
-  },
-];
+import { footerSections } from "./landing-content";
 
 export const Footer = () => {
   return (
