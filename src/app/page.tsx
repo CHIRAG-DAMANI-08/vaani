@@ -1,35 +1,27 @@
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
-import { LogoMarquee } from "./components/LogoMarquee";
-import { FeaturesSection } from "./components/FeaturesSection";
-import { PlatformStack } from "./components/PlatformStack";
-import { SamvaadDemo } from "./components/SamvaadDemo";
-import { SecuritySection } from "./components/SecuritySection";
-import { DeploymentSection } from "./components/DeploymentSection";
-import { TestimonialsSection } from "./components/TestimonialsSection";
-import { ResearchSection } from "./components/ResearchSection";
+import { AudienceChanged } from "./components/AudienceChanged";
+import { Marquee } from "./components/LogoMarquee";
+import { Mission } from "./components/Mission";
+import { Solution } from "./components/Solution";
 import { CTABanner } from "./components/CTABanner";
 import { Footer } from "./components/Footer";
 import { WaitlistModal } from "./components/WaitlistModal";
 
 export default function Home() {
   return (
-    <>
+    <div className="landing-dark">
       <Navbar />
       <main>
         <HeroSection />
-        <LogoMarquee />
-        <FeaturesSection />
-        <PlatformStack />
-        <SamvaadDemo />
-        <SecuritySection />
-        <DeploymentSection />
-        <TestimonialsSection />
-        <ResearchSection />
+        <AudienceChanged />
+        <Marquee />
+        <Mission />
+        <Solution />
         <CTABanner />
       </main>
       <Footer />
       <WaitlistModal />
-    </>
+    </div>
   );
 }

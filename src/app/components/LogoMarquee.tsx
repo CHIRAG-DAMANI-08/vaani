@@ -1,45 +1,36 @@
-"use client";
-
-import { motion } from "framer-motion";
-
-const logos = [
-  "4 Languages Output",
-  "500M+ Regional Viewers",
-  "~5s Translation Latency",
-  "₹0 To Get Started",
-  "Simultaneous Broadcasting",
-  "Zero OBS Changes",
+const langs = [
+  "हिन्दी",
+  "Español",
+  "தமிழ்",
+  "Français",
+  "中文",
+  "العربية",
+  "Português",
+  "తెలుగు",
+  "日本語",
+  "Deutsch",
+  "한국어",
+  "Русский",
 ];
 
-export const LogoMarquee = () => {
+export const Marquee = () => {
+  const items = [...langs, ...langs];
   return (
-    <section className="py-12 overflow-hidden">
-      <motion.p
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        className="text-center text-xs font-medium tracking-[0.2em] uppercase text-muted mb-10"
-      >
-        Unmatched reach and scale
-      </motion.p>
-
-      <div className="relative">
-        {/* Fade edges */}
-        <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#F5F5F0] to-transparent z-10" />
-        <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#F5F5F0] to-transparent z-10" />
-
-        <div className="flex animate-marquee">
-          {[...logos, ...logos].map((logo, i) => (
-            <div
-              key={`${logo}-${i}`}
-              className="flex-shrink-0 mx-8 flex items-center justify-center h-12 min-w-[140px]"
-            >
-              <span className="text-lg font-semibold text-foreground/30 tracking-wide whitespace-nowrap select-none">
-                {logo}
-              </span>
-            </div>
-          ))}
-        </div>
+    <section
+      className="relative py-10 md:py-14 border-y border-[var(--landing-border)] overflow-hidden"
+      data-testid="marquee"
+      aria-hidden="true"
+    >
+      <div className="flex w-max animate-marquee">
+        {items.map((lang, i) => (
+          <div
+            key={`${lang}-${i}`}
+            className="flex items-center gap-6 px-6 text-2xl md:text-3xl font-medium tracking-tight text-[var(--landing-fg)]/20"
+          >
+            <span>{lang}</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--landing-fg)]/15" />
+          </div>
+        ))}
       </div>
     </section>
   );

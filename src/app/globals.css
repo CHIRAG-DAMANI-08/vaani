@@ -49,6 +49,25 @@
   --lang-kannada: #E86F2A;
 }
 
+/* ── Dark Landing Page Theme ── */
+.landing-dark {
+  --landing-bg: 0 0% 0%;
+  --landing-fg: 0 0% 100%;
+  --landing-card: hsl(0 0% 5%);
+  --landing-border: hsl(0 0% 20% / 0.3);
+  --landing-muted: hsl(0 0% 65%);
+  --landing-hero-subtitle: hsl(210 17% 95%);
+
+  background: hsl(var(--landing-bg));
+  color: hsl(var(--landing-fg));
+}
+
+.landing-dark {
+  --landing-bg: #000000;
+  --landing-fg: #ffffff;
+  --foreground: #ffffff;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
