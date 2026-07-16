@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect } from "react";
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
 import { AudienceChanged } from "./components/AudienceChanged";
@@ -9,6 +12,13 @@ import { Footer } from "./components/Footer";
 import { WaitlistModal } from "./components/WaitlistModal";
 
 export default function Home() {
+  useEffect(() => {
+    document.body.classList.add("landing-dark-body");
+    return () => {
+      document.body.classList.remove("landing-dark-body");
+    };
+  }, []);
+
   return (
     <div className="landing-dark">
       <Navbar />
