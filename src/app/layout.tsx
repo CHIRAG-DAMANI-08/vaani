@@ -53,6 +53,17 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${inter.variable} ${playfair.variable} ${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
     >
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+        
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/site.webmanifest" />
+        <meta name="theme-color" content="#000000" />
+      </head>
       <body suppressHydrationWarning className="min-h-screen bg-[var(--background)] text-[var(--foreground)] font-sans">
         <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
           {children}

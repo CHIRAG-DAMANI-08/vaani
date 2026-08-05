@@ -12,13 +12,13 @@ import {
   Trash2,
   RefreshCw,
   KeyRound,
-  ShieldAlert,
   X,
 } from "lucide-react";
 import { useCSRF } from "@/lib/use-csrf";
 import { OBSConnectionSection } from "./OBSConnectionSection";
 import { StreamSettingsSection } from "./StreamSettingsSection";
 import { TTSSettingsSection } from "./TTSSettingsSection";
+import { GlassCard } from "@/app/components/GlassCard";
 
 type KeyStatus =
   | { connected: false }
@@ -50,23 +50,19 @@ function formatDate(iso: string | null): string {
 }
 
 export default function SettingsPage() {
-  // Fetch key status
   const [keyStatus, setKeyStatus] = useState<KeyStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Section UI state
   const [sectionState, setSectionState] = useState<SectionState>("view");
   const [actionState, setActionState] = useState<ActionState>("idle");
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
 
-  // Key input
   const [newKey, setNewKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Remove confirmation dialog
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
 
   const { csrfToken, refreshToken } = useCSRF();
@@ -77,7 +73,6 @@ export default function SettingsPage() {
     actionState !== "loading" &&
     countdown === 0;
 
-  // ── Fetch key status ──
   const fetchKeyStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/key/status");
@@ -96,7 +91,6 @@ export default function SettingsPage() {
     fetchKeyStatus();
   }, [fetchKeyStatus]);
 
-  // ── Countdown timer ──
   useEffect(() => {
     if (countdown > 0) {
       countdownRef.current = setInterval(() => {
@@ -117,13 +111,6 @@ export default function SettingsPage() {
     };
   }, [countdown]);
 
-  const formatCountdown = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
-
-  // ── Save/Validate key ──
   const handleSaveKey = async () => {
     if (!canSubmit) return;
 
@@ -147,7 +134,6 @@ export default function SettingsPage() {
 
       if (res.ok && data.success) {
         setActionState("success");
-        // Reset after a beat
         setTimeout(() => {
           setSectionState("view");
           setActionState("idle");
@@ -158,7 +144,6 @@ export default function SettingsPage() {
         return;
       }
 
-      // Error handling
       setErrorCode(data.error);
       setActionState("error");
 
@@ -176,7 +161,6 @@ export default function SettingsPage() {
     }
   };
 
-  // ── Remove key ──
   const handleRemoveKey = async () => {
     setActionState("loading");
 
@@ -215,311 +199,195 @@ export default function SettingsPage() {
     setCountdown(0);
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const text = e.clipboardData.getData("text").trim();
-    setNewKey(text);
-    setErrorCode(null);
-    setActionState("idle");
-  };
-
   return (
-    <div className="space-y-8 max-w-7xl pt-2">
+    <div className="space-y-8 max-w-6xl">
       {/* Page Header */}
       <div>
-        <h1 className="text-[32px] font-syne font-bold text-gray-900 tracking-tight">
-          Settings
+        <h1 className="text-4xl lg:text-5xl font-sans font-bold text-white tracking-tight leading-none">
+          Set<span className="font-serif italic font-normal">tings</span>
         </h1>
-        <p className="text-[14px] text-gray-500 font-dm-sans mt-1">
+        <p className="text-sm font-sans text-neutral-400 mt-2">
           Manage API keys and streaming configuration.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <div className="space-y-6">
-          {/* ── Sarvam API Key Section ── */}
-      <section className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] rounded-[28px] overflow-hidden">
-        {/* Section header */}
-        <div className="flex items-center justify-between px-8 pt-7 pb-5 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-[12px] bg-[#FFF2E5] flex items-center justify-center">
-              <KeyRound className="w-5 h-5 text-[#F5821F]" />
+      {/* 2-Column Responsive Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        {/* Card 1: Sarvam API Key */}
+        <GlassCard className="flex flex-col h-full">
+          {/* Header */}
+          <div className="p-6 pb-4 border-b border-white/10 flex items-start justify-between">
+            <div className="flex items-center gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white shrink-0">
+                <KeyRound className="w-4 h-4" strokeWidth={1.6} />
+              </div>
+              <div>
+                <h2 className="text-base font-sans font-bold text-white tracking-tight">
+                  Sarvam API Key
+                </h2>
+                <p className="text-xs font-sans text-neutral-400 mt-0.5">
+                  Used for speech recognition, translation, and TTS.
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-[16px] font-syne font-bold text-gray-900">
-                Sarvam API Key
-              </h2>
-              <p className="text-[12px] font-dm-sans text-gray-400">
-                Used for speech-to-text, translation, and text-to-speech
-              </p>
-            </div>
+            <a
+              href="https://dashboard.sarvam.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-sans text-neutral-400 hover:text-white inline-flex items-center gap-1 transition-colors shrink-0"
+            >
+              Get keys <ExternalLink className="w-3 h-3" strokeWidth={1.6} />
+            </a>
           </div>
-          <a
-            href="https://dashboard.sarvam.ai"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[12px] font-dm-sans font-medium text-[#F5821F] hover:text-[#E8690A] inline-flex items-center gap-1 transition-colors"
-          >
-            Get keys <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
 
-        <div className="px-8 py-6">
-          {loading ? (
-            <div className="flex items-center gap-3 py-4">
-              <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-              <p className="text-[13px] text-gray-400 font-dm-sans">
-                Checking key status...
-              </p>
-            </div>
-          ) : keyStatus?.connected && sectionState === "view" ? (
-            /* ── State A: Key Connected ── */
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p
-                    className="text-[14px] text-gray-900 font-medium"
-                    style={{ fontFamily: "var(--font-jetbrains)" }}
-                  >
-                    {keyStatus.masked}
-                  </p>
-                </div>
-                <p className="text-[12px] font-dm-sans text-gray-400">
-                  Last updated{" "}
-                  {keyStatus.updatedAt
-                    ? formatDate(keyStatus.updatedAt)
-                    : "—"}
-                </p>
+          {/* Body */}
+          <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 text-neutral-500 animate-spin" />
               </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setSectionState("edit");
-                    setNewKey("");
-                    setErrorCode(null);
-                    setTimeout(() => inputRef.current?.focus(), 100);
-                  }}
-                  className="px-5 py-2.5 rounded-[14px] text-[13px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100 hover:shadow-sm active:scale-[0.98] transition-all flex items-center gap-2"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  Update key
-                </button>
-                <button
-                  onClick={() => setShowRemoveDialog(true)}
-                  className="px-5 py-2.5 rounded-[14px] text-[13px] font-semibold text-[#EF4444] bg-[#FEF2F2] border border-[#FEE2E2] hover:bg-[#FEE2E2] active:scale-[0.98] transition-all flex items-center gap-2"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Remove key
-                </button>
-              </div>
-            </div>
-          ) : !keyStatus?.connected && sectionState === "view" ? (
-            /* ── State B: No Key Connected ── */
-            <div>
-              <div className="flex items-center gap-3 mb-4 p-4 rounded-[16px] bg-[#FFFBEB] border border-[#FDE68A]/50">
-                <ShieldAlert className="w-5 h-5 text-[#F59E0B] shrink-0" />
-                <p className="text-[13px] font-dm-sans text-[#92400E]">
-                  No API key connected. Vaani cannot translate your streams
-                  without a Sarvam API key.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setSectionState("add");
-                  setNewKey("");
-                  setErrorCode(null);
-                  setTimeout(() => inputRef.current?.focus(), 100);
-                }}
-                className="px-6 py-3 rounded-[16px] text-[14px] font-semibold bg-gray-900 text-white hover:bg-gray-800 shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:scale-[0.98] transition-all"
-              >
-                Add key
-              </button>
-            </div>
-          ) : (
-            /* ── State C: Edit / Add Mode ── */
-            <div>
-              {/* Show current key if editing */}
-              {sectionState === "edit" && keyStatus?.connected && (
-                <p className="text-[12px] font-dm-sans text-gray-400 mb-3">
-                  Current key:{" "}
-                  <span style={{ fontFamily: "var(--font-jetbrains)" }}>
+            ) : sectionState === "view" && keyStatus?.connected ? (
+              <div className="space-y-4 my-auto">
+                <div className="liquid-glass border border-white/10 rounded-xl p-4 space-y-1">
+                  <span className="font-mono text-xs text-white">
                     {keyStatus.masked}
                   </span>
-                </p>
-              )}
+                  <p className="text-[11px] font-sans text-neutral-500">
+                    Last updated {formatDate(keyStatus.updatedAt)}
+                  </p>
+                </div>
 
-              {/* New key input */}
-              <div className="relative mb-2">
-                <input
-                  ref={inputRef}
-                  type={showKey ? "text" : "password"}
-                  value={newKey}
-                  onChange={(e) => {
-                    setNewKey(e.target.value);
-                    if (errorCode) {
-                      setErrorCode(null);
-                      setActionState("idle");
-                    }
-                  }}
-                  onPaste={handlePaste}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveKey();
-                  }}
-                  placeholder={
-                    sectionState === "edit"
-                      ? "Paste new key..."
-                      : "sk_live_..."
-                  }
-                  disabled={
-                    actionState === "loading" ||
-                    actionState === "success" ||
-                    countdown > 0
-                  }
-                  className={`w-full rounded-[16px] border px-4 py-3.5 pr-12 text-[13px] text-gray-900 bg-gray-50/50 outline-none transition-all duration-200 placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-[#F5821F]/15 ${
-                    actionState === "error"
-                      ? "border-[#EF4444] focus:border-[#EF4444]"
-                      : actionState === "success"
-                      ? "border-[#10B981] focus:border-[#10B981]"
-                      : "border-gray-200 focus:border-[#F5821F]/40"
-                  }`}
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
-                  tabIndex={-1}
-                >
-                  {actionState === "success" ? (
-                    <Check className="w-4 h-4 text-[#10B981]" />
-                  ) : showKey ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    onClick={() => setSectionState("edit")}
+                    className="px-4 py-2 rounded-full text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" strokeWidth={1.6} />
+                    Update Key
+                  </button>
+                  <button
+                    onClick={() => setShowRemoveDialog(true)}
+                    className="px-4 py-2 rounded-full text-xs font-medium text-red-400 border border-red-500/30 hover:bg-red-950/30 transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" strokeWidth={1.6} />
+                    Remove Key
+                  </button>
+                </div>
               </div>
+            ) : (
+              <div className="space-y-4 my-auto">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-sans font-semibold text-neutral-400 uppercase tracking-wider block">
+                    {sectionState === "edit" ? "New API Key" : "Enter API Key"}
+                  </label>
+                  <div className="relative">
+                    <input
+                      ref={inputRef}
+                      type={showKey ? "text" : "password"}
+                      value={newKey}
+                      onChange={(e) => {
+                        setNewKey(e.target.value);
+                        setErrorCode(null);
+                      }}
+                      placeholder="Paste your Sarvam API key..."
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-3.5 py-2.5 pr-10 text-xs font-mono text-white outline-none focus:border-white/30 transition-all placeholder:text-neutral-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowKey(!showKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
+                    >
+                      {showKey ? (
+                        <EyeOff className="w-4 h-4" strokeWidth={1.6} />
+                      ) : (
+                        <Eye className="w-4 h-4" strokeWidth={1.6} />
+                      )}
+                    </button>
+                  </div>
+                </div>
 
-              {/* Error area */}
-              <div className="h-[36px] flex items-start mb-2">
                 {errorCode && (
-                  <div className="flex items-start gap-2 animate-[fade-in_150ms_ease]">
-                    <AlertCircle className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
-                    <p className="text-[12px] font-dm-sans text-[#EF4444] leading-[1.5]">
-                      {ERROR_MESSAGES[errorCode] || "Something went wrong."}
-                      {errorCode === "RATE_LIMIT_EXCEEDED" &&
-                        countdown > 0 && (
-                          <span className="font-mono font-bold ml-1">
-                            {formatCountdown(countdown)}
-                          </span>
-                        )}
-                    </p>
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-red-950/30 border border-red-500/30 text-xs font-sans text-red-300">
+                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" strokeWidth={1.6} />
+                    <span>{ERROR_MESSAGES[errorCode] || errorCode}</span>
                   </div>
                 )}
-              </div>
 
-              {/* Action buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={handleSaveKey}
-                  disabled={!canSubmit}
-                  className={`px-6 py-3 rounded-[16px] text-[14px] font-semibold transition-all duration-300 flex items-center gap-2 ${
-                    actionState === "success"
-                      ? "bg-[#10B981] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
-                      : actionState === "loading"
-                      ? "bg-gray-900 text-white opacity-80"
-                      : canSubmit
-                      ? "bg-gray-900 text-white hover:bg-gray-800 shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:scale-[0.98]"
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  {actionState === "loading" && (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    disabled={!canSubmit}
+                    onClick={handleSaveKey}
+                    className="px-4 py-2 rounded-full text-xs font-semibold bg-white text-black hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    {actionState === "loading" ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5" strokeWidth={1.6} />
+                    )}
+                    {actionState === "loading" ? "Validating..." : "Save Key"}
+                  </button>
+                  {keyStatus?.connected && (
+                    <button
+                      onClick={handleCancel}
+                      className="px-4 py-2 rounded-full text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
                   )}
-                  {actionState === "success" && (
-                    <Check className="w-4 h-4" />
-                  )}
-                  {actionState === "loading"
-                    ? "Validating..."
-                    : actionState === "success"
-                    ? "Saved!"
-                    : sectionState === "edit"
-                    ? "Save new key"
-                    : "Validate and save"}
-                </button>
-                <button
-                  onClick={handleCancel}
-                  className="px-5 py-2.5 rounded-[14px] text-[14px] font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all"
-                >
-                  Cancel
-                </button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-          </section>
+            )}
+          </div>
+        </GlassCard>
 
-          <OBSConnectionSection csrfToken={csrfToken || ""} refreshToken={refreshToken} />
-        </div>
-        
-        <div className="space-y-6">
-          <StreamSettingsSection />
-          <TTSSettingsSection />
-        </div>
+        {/* Card 2: Stream Settings */}
+        <StreamSettingsSection />
+
+        {/* Card 3: OBS Connection */}
+        <OBSConnectionSection
+          csrfToken={csrfToken || ""}
+          refreshToken={refreshToken}
+        />
+
+        {/* Card 4: Voice & Language */}
+        <TTSSettingsSection />
       </div>
 
-      {/* ── Remove Key Confirmation Dialog ── */}
+      {/* Remove Key Dialog */}
       {showRemoveDialog && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[8px] animate-[fade-in_150ms_ease]" />
-          <div className="fixed z-[60] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[420px] bg-white/95 backdrop-blur-xl border border-white shadow-[0_32px_80px_rgba(0,0,0,0.12)] rounded-[28px] p-8">
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-[20px] font-syne font-bold text-gray-900">
-                Remove API key?
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" />
+          <div className="fixed z-[60] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md liquid-glass bg-black/95 border border-white/10 rounded-2xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <h3 className="text-base font-sans font-bold text-white">
+                Remove Sarvam API Key?
               </h3>
               <button
-                onClick={() => {
-                  setShowRemoveDialog(false);
-                  setActionState("idle");
-                }}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                onClick={() => setShowRemoveDialog(false)}
+                className="p-1 rounded-lg text-neutral-400 hover:text-white"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" strokeWidth={1.6} />
               </button>
             </div>
-
-            <p className="text-[14px] font-dm-sans text-gray-500 leading-[1.6] mb-4">
-              Vaani will no longer be able to translate your streams. You can
-              reconnect a key at any time from Settings.
+            <p className="text-xs font-sans text-neutral-400 leading-relaxed">
+              Removing your API key will stop speech recognition, translation, and TTS processing across all streams.
             </p>
-
-            <div className="flex items-center gap-2 p-3 rounded-[12px] bg-[#FFFBEB] border border-[#FDE68A]/50 mb-7">
-              <AlertCircle className="w-4 h-4 text-[#F59E0B] shrink-0" />
-              <p className="text-[12px] font-dm-sans text-[#92400E]">
-                Any active streams will stop immediately.
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-2 pt-2">
               <button
-                onClick={() => {
-                  setShowRemoveDialog(false);
-                  setActionState("idle");
-                }}
-                className="px-5 py-2.5 rounded-[14px] text-[14px] font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all"
+                onClick={() => setShowRemoveDialog(false)}
+                className="px-4 py-2 rounded-full text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/10"
               >
-                Keep key
+                Keep Key
               </button>
               <button
                 onClick={handleRemoveKey}
                 disabled={actionState === "loading"}
-                className="px-6 py-3 rounded-[16px] text-[14px] font-semibold bg-[#EF4444] text-white hover:bg-[#DC2626] shadow-[0_4px_12px_rgba(239,68,68,0.25)] active:scale-[0.98] transition-all flex items-center gap-2"
+                className="px-4 py-2 rounded-full text-xs font-semibold bg-red-500 text-white hover:bg-red-600 flex items-center gap-2"
               >
                 {actionState === "loading" && (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 )}
-                Remove key
+                Remove Key
               </button>
             </div>
           </div>

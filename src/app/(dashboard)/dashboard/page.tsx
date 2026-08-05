@@ -5,7 +5,7 @@ import { SessionStats } from "./SessionStats";
 import { LiveTranscript } from "./LiveTranscript";
 import { PastSessions } from "./PastSessions";
 import { TestModePanel } from "@/app/components/TestModePanel";
-import { Download, Activity } from "lucide-react";
+import { Download } from "lucide-react";
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Session } from "@/lib/models/session";
@@ -43,47 +43,46 @@ export default async function DashboardPage() {
 
   const hoursTranslated = Math.floor(cumulative.totalDurationMs / 3600000);
   const totalCost = cumulative.totalCostINR.toFixed(2);
+
   return (
-    <div className="space-y-[32px] pt-2">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-end justify-between mb-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-           <p className="text-[12px] font-dm-sans font-bold uppercase tracking-[0.2em] text-[#F5821F] mb-2 drop-shadow-sm">
-             Overview
-           </p>
-           <h1 className="text-[36px] font-syne font-bold text-gray-900 tracking-tight leading-none">
-             Dashboard
-           </h1>
+          <p className="text-[11px] font-sans font-semibold uppercase tracking-[0.18em] text-neutral-500 mb-1.5">
+            OVERVIEW
+          </p>
+          <h1 className="text-4xl lg:text-5xl font-sans font-bold text-white tracking-tight leading-none">
+            Dash<span className="font-serif italic font-normal">board</span>
+          </h1>
         </div>
-        <div className="hidden md:flex items-center gap-4">
-          <div className="bg-white/60 backdrop-blur-md border border-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] px-5 py-2.5 rounded-[16px] flex flex-col text-right">
-            <span className="text-[10px] font-dm-sans font-bold uppercase tracking-[0.1em] text-gray-400 mb-0.5">Total Usage</span>
-            <span className="text-[14px] font-syne font-bold text-gray-900">
-              <span className="text-[#3B82F6]">{hoursTranslated}h</span> translated <span className="text-gray-300 mx-1">•</span> <span className="text-[#F5821F]">₹{totalCost}</span> spent
-            </span>
+        <div className="flex items-center gap-3">
+          <div className="liquid-glass px-4 py-2 rounded-full border border-white/10 text-xs text-neutral-300 font-medium">
+            <span className="text-neutral-500 uppercase tracking-wider text-[10px] font-semibold mr-2">TOTAL USAGE —</span>
+            <span>{hoursTranslated}h translated · ₹{totalCost} spent</span>
           </div>
           <a 
             href="/api/sessions/export" 
-            className="px-5 py-[14px] rounded-[16px] bg-white text-[13px] font-bold text-gray-700 shadow-[0_4px_12px_rgba(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all flex items-center gap-2"
+            className="liquid-glass px-4 py-2 rounded-full border border-white/10 text-xs font-semibold text-white hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-2 cursor-pointer"
             download
           >
-             <Download className="w-4 h-4" />
-             Export Data
+            <Download className="w-3.5 h-3.5" strokeWidth={1.6} />
+            Export Data
           </a>
         </div>
       </div>
 
-      {/* Channel status cards */}
+      {/* Channel status cards grid */}
       <StatusRow />
 
       {/* Pipeline Monitor */}
       <PipelineMonitor />
 
-      {/* Test Mode */}
+      {/* Pipeline Test mode panel */}
       <TestModePanel />
 
       {/* Transcript + Stats row */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-[24px]">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 min-h-[300px]">
           <LiveTranscript />
         </div>

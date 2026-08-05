@@ -1,22 +1,10 @@
-/**
- * Sarvam AI Pipeline — Server-side STT → Translate → TTS
- *
- * Uses the REST API endpoints:
- *  - POST https://api.sarvam.ai/speech-to-text  (multipart/form-data, file + params)
- *  - POST https://api.sarvam.ai/translate        (JSON body)
- *  - POST https://api.sarvam.ai/text-to-speech   (JSON body, returns base64 audio)
- *
- * Auth: `api-subscription-key` header with the user's decrypted Sarvam key.
- */
+import { logger } from "@/lib/logger";
 
-import { LANG_MAP } from "./language-registry";
-import { logger } from "./logger";
-export { LANG_MAP } from "./language-registry";
+import { LANG_MAP } from "@/lib/language-registry";
+export { LANG_MAP };
 
 const SARVAM_BASE = "https://api.sarvam.ai";
-const TIMEOUT_MS = 15_000;
-
-// ── Types ──────────────────────────────────────────────────────────────────
+const TIMEOUT_MS = 15000;
 
 export type STTResult = {
   transcript: string;
@@ -31,52 +19,33 @@ export type TranslateResult = {
 };
 
 export type TTSResult = {
-  /** base64-encoded WAV audio */
   audioBase64: string;
   targetLanguage: string;
 };
 
-export type PipelineStageStatus = "idle" | "active" | "done" | "error";
-
-export type PipelineResult = {
-  stt: STTResult | null;
-  translations: TranslateResult[];
-  ttsOutputs: TTSResult[];
-  error: string | null;
-  /** Time taken for each stage in ms */
-  timings: {
-    stt: number;
-    translate: number;
-    tts: number;
-    total: number;
-  };
-};
-
-
-
 // ── STT ────────────────────────────────────────────────────────────────────
 
-/**
- * Transcribe audio to text using Sarvam STT REST API.
- * @param audioBuffer - Raw audio data (WAV/PCM/WebM)
- * @param apiKey - Decrypted Sarvam API key
- * @param mimeType - MIME type of the audio (default: audio/wav)
- */
 export async function speechToText(
   audioBuffer: Buffer,
   apiKey: string,
-  mimeType = "audio/wav"
+  options?: { prompt?: string }
 ): Promise<STTResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    // Build multipart form data manually for Node.js
-    const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
     const formData = new FormData();
-    formData.append("file", blob, `chunk.${mimeType === "audio/webm" ? "webm" : "wav"}`);
-    formData.append("model", "saarika:v2.5");
-    formData.append("language_code", "unknown"); // auto-detect
+    formData.append(
+      "file",
+      new Blob([new Uint8Array(audioBuffer)], { type: "audio/wav" }),
+      "input.wav"
+    );
+    formData.append("model", "saarika:v2");
+    formData.append("with_timestamps", "false");
+
+    if (options?.prompt) {
+      formData.append("prompt", options.prompt);
+    }
 
     const response = await fetch(`${SARVAM_BASE}/speech-to-text`, {
       method: "POST",
@@ -112,13 +81,6 @@ export async function speechToText(
 
 // ── Translate ──────────────────────────────────────────────────────────────
 
-/**
- * Translate text from source language to target language.
- * @param text - Text to translate
- * @param sourceLangCode - BCP-47 source language (e.g. "en-IN")
- * @param targetLangCode - BCP-47 target language (e.g. "hi-IN")
- * @param apiKey - Decrypted Sarvam API key
- */
 export async function translateText(
   text: string,
   sourceLangCode: string,
@@ -170,9 +132,11 @@ export async function translateText(
 // ── TTS ────────────────────────────────────────────────────────────────────
 
 /**
- * Convert text to speech using Sarvam TTS REST API.
- * Returns base64-encoded WAV audio.
+ * Speakers that belong to bulbul:v1 model vs bulbul:v3
  */
+const BULBUL_V1_SPEAKERS = new Set(["anushka", "manisha", "vidya", "abhilash", "arya", "karun", "hitesh"]);
+const FEMALE_SPEAKERS = new Set(["anushka", "manisha", "vidya", "ritu", "priya", "neha", "pooja", "simran", "kavya", "ishita", "shreya", "roopa", "tanya", "shruti", "suhani", "kavitha", "rupali"]);
+
 export async function textToSpeech(
   text: string,
   targetLangCode: string,
@@ -181,50 +145,87 @@ export async function textToSpeech(
 ): Promise<TTSResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  const speaker = options?.speaker || "shubh";
+
+  const reqSpeaker = (options?.speaker || "shubh").toLowerCase();
   const pace = Math.min(2.0, Math.max(0.5, options?.pace ?? 1.0));
+  const isFemale = FEMALE_SPEAKERS.has(reqSpeaker);
 
-  try {
-    const response = await fetch(`${SARVAM_BASE}/text-to-speech`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-subscription-key": apiKey,
-      },
-      body: JSON.stringify({
-        text,
-        target_language_code: targetLangCode,
-        model: "bulbul:v3",
-        speaker,
-        sample_rate: 24000,
-        pace,
-      }),
-      signal: controller.signal,
-    });
+  // Determine primary model based on speaker registry
+  const primaryModel = BULBUL_V1_SPEAKERS.has(reqSpeaker) ? "bulbul:v1" : "bulbul:v3";
 
-    clearTimeout(timeout);
+  // Build fallback sequence preserving speaker gender
+  const attempts = [
+    { model: primaryModel, speaker: reqSpeaker },
+    { model: primaryModel === "bulbul:v3" ? "bulbul:v1" : "bulbul:v3", speaker: reqSpeaker },
+    { model: "bulbul:v1", speaker: isFemale ? "anushka" : "shubh" },
+    { model: "bulbul:v3", speaker: isFemale ? "kavya" : "shubh" },
+  ];
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      throw new Error(`TTS API error ${response.status}: ${errText}`);
+  let lastError: Error | null = null;
+
+  for (const attempt of attempts) {
+    try {
+      const response = await fetch(`${SARVAM_BASE}/text-to-speech`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "api-subscription-key": apiKey,
+        },
+        body: JSON.stringify({
+          text,
+          target_language_code: targetLangCode,
+          model: attempt.model,
+          speaker: attempt.speaker,
+          sample_rate: 24000,
+          pace,
+        }),
+        signal: controller.signal,
+      });
+
+      if (response.ok) {
+        clearTimeout(timeout);
+        const data = await response.json();
+        if (data.audios?.[0]) {
+          return {
+            audioBase64: data.audios[0],
+            targetLanguage: targetLangCode,
+          };
+        }
+      } else {
+        const errText = await response.text().catch(() => "");
+        logger.warn({ status: response.status, errText, attempt }, "Sarvam TTS attempt failed, trying fallback");
+        lastError = new Error(`TTS API error ${response.status}: ${errText}`);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        clearTimeout(timeout);
+        throw new Error("TTS request timed out");
+      }
+      lastError = err instanceof Error ? err : new Error(String(err));
     }
-
-    const data = await response.json();
-
-    return {
-      audioBase64: data.audios?.[0] || "",
-      targetLanguage: targetLangCode,
-    };
-  } catch (err: unknown) {
-    clearTimeout(timeout);
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error("TTS request timed out");
-    }
-    throw err;
   }
+
+  clearTimeout(timeout);
+  throw lastError || new Error("TTS request failed for all speaker attempts");
 }
 
 // ── Full Pipeline ──────────────────────────────────────────────────────────
+
+export type PipelineStageStatus = "idle" | "active" | "done" | "error";
+
+export type PipelineResult = {
+  stt: STTResult | null;
+  translations: TranslateResult[];
+  ttsOutputs: TTSResult[];
+  error: string | null;
+  /** Time taken for each stage in ms */
+  timings: {
+    stt: number;
+    translate: number;
+    tts: number;
+    total: number;
+  };
+};
 
 export type PipelineOptions = {
   speaker?: string;
@@ -234,12 +235,7 @@ export type PipelineOptions = {
 
 /**
  * Run the full STT → Translate → TTS pipeline for a single audio chunk.
- *
- * @param audioBuffer - Raw audio data
- * @param apiKey - Decrypted Sarvam API key
- * @param targetLanguages - Array of channel language IDs (e.g. ["hi", "ta"])
- * @param onStageUpdate - Callback for real-time stage status updates
- * @param options - Optional TTS voice settings
+ * Used by server.ts on the per-user serial queue.
  */
 export async function runPipeline(
   audioBuffer: Buffer,
@@ -253,9 +249,7 @@ export async function runPipeline(
   const translations: TranslateResult[] = [];
   const ttsOutputs: TTSResult[] = [];
   let error: string | null = null;
-  let sttTime = 0,
-    translateTime = 0,
-    ttsTime = 0;
+  let sttTime = 0, translateTime = 0, ttsTime = 0;
 
   try {
     // ── Stage 1: STT ──
@@ -277,8 +271,7 @@ export async function runPipeline(
       };
     }
 
-    // Determine source language for translation
-    // Use override from options if set, otherwise fall back to STT detected language
+    // Source lang override from TTS settings, else STT-detected language
     const sourceLang = options?.sourceLang || sttResult.languageCode || "en-IN";
 
     // ── Stage 2: Translate (parallel for all target languages) ──
@@ -330,7 +323,6 @@ export async function runPipeline(
     ttsTime = Date.now() - ttsStart;
     onStageUpdate?.("tts", "done", { count: ttsOutputs.length, time: ttsTime });
 
-    // Signal stream stage as done
     onStageUpdate?.("stream", "done", { count: ttsOutputs.length });
   } catch (err: unknown) {
     error = err instanceof Error ? err.message : "Pipeline failed";

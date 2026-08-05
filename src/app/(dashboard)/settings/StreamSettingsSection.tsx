@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Radio, Copy, Check, HelpCircle } from "lucide-react";
+import { Radio, Copy, Check, HelpCircle, Mic } from "lucide-react";
 import { OBSGuideModal } from "@/app/components/OBSGuideModal";
+import { GlassCard } from "@/app/components/GlassCard";
 
 export function StreamSettingsSection() {
   const { user } = useUser();
@@ -13,7 +14,6 @@ export function StreamSettingsSection() {
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
-    // Sync current source state
     import("@/lib/obs-relay-client").then((mod) => {
       setTranslationSource(mod.obsRelayManager.translationSource);
     });
@@ -39,81 +39,81 @@ export function StreamSettingsSection() {
   };
 
   return (
-    <section className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-[24px] overflow-hidden mb-6 relative group">
-      <div className="p-6 md:p-8">
-        <div className="flex items-start justify-between mb-8">
+    <GlassCard className="flex flex-col h-full">
+      {/* Header */}
+      <div className="p-6 pb-4 border-b border-white/10">
+        <div className="flex items-center gap-3.5">
+          <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white shrink-0">
+            <Radio className="w-4 h-4" strokeWidth={1.6} />
+          </div>
           <div>
-            <div className="w-10 h-10 rounded-[12px] bg-[#3B82F6]/10 flex items-center justify-center mb-4">
-              <Radio className="w-5 h-5 text-[#3B82F6]" />
-            </div>
-            <h2 className="text-[20px] font-syne font-bold text-gray-900 mb-2">
-              Stream Settings
-            </h2>
-            <p className="text-[14px] font-dm-sans text-gray-500 max-w-xl">
-              Configure how Vaani ingests your stream and which audio channels to translate.
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-6 max-w-2xl">
-          {/* Server URL */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center">
-            <p className="text-[13px] font-dm-sans font-bold text-gray-700">Server URL</p>
-            <div className="md:col-span-2 relative group/copy cursor-pointer" onClick={() => copyToClipboard("rtmp://localhost:1935/live", "url")}>
-              <div className="flex items-center justify-between w-full bg-gray-50/80 border border-gray-100 rounded-[12px] px-4 py-3 text-[14px] font-mono text-gray-600 transition-all group-hover/copy:bg-white group-hover/copy:shadow-sm">
-                <span>rtmp://localhost:1935/live</span>
-                {copiedUrl ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-gray-400 opacity-0 group-hover/copy:opacity-100 transition-opacity" />}
-              </div>
-            </div>
-          </div>
-
-          {/* Stream Key */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center">
-            <p className="text-[13px] font-dm-sans font-bold text-gray-700">Stream Key</p>
-            <div className="md:col-span-2 relative group/copy cursor-pointer" onClick={() => user?.id && copyToClipboard(user.id, "key")}>
-              <div className="flex items-center justify-between w-full bg-gray-50/80 border border-gray-100 rounded-[12px] px-4 py-3 text-[14px] font-mono text-gray-600 transition-all group-hover/copy:bg-white group-hover/copy:shadow-sm">
-                <span className="blur-sm group-hover/copy:blur-none transition-all duration-300">
-                  {user?.id || "••••••••"}
-                </span>
-                {copiedKey ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-gray-400 opacity-0 group-hover/copy:opacity-100 transition-opacity" />}
-              </div>
-            </div>
-          </div>
-
-          <div className="h-px bg-gray-100 w-full my-6" />
-
-          {/* Audio Translation Source */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-start">
-            <div>
-              <p className="text-[13px] font-dm-sans font-bold text-gray-700 mb-1 flex items-center justify-between">
-                Translate Audio From
-                <button 
-                  onClick={() => setShowGuide(true)}
-                  className="text-[#3B82F6] hover:text-[#2563EB] transition-colors p-1"
-                  title="How to separate audio"
-                >
-                  <HelpCircle className="w-4 h-4" />
-                </button>
-              </p>
-              <p className="text-[11px] text-gray-400 leading-snug">
-                In OBS, pan Desktop to Left and Mic to Right to separate them.
-              </p>
-            </div>
-            <div className="md:col-span-2">
-              <select
-                value={translationSource}
-                onChange={handleSourceChange}
-                className="w-full text-[14px] font-dm-sans bg-gray-50/80 border border-gray-100 rounded-[12px] px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/20 transition-all hover:bg-white"
-              >
-                <option value="mic_only">Microphone (Right channel)</option>
-                <option value="desktop_only">Desktop (Left channel)</option>
-                <option value="mixed">Mixed (Mono)</option>
-              </select>
-            </div>
+            <h2 className="text-base font-sans font-bold text-white tracking-tight">Stream Settings</h2>
+            <p className="text-xs font-sans text-neutral-400 mt-0.5">Configure stream ingestion and audio channel selection.</p>
           </div>
         </div>
       </div>
+
+      <div className="p-6 space-y-4">
+        {/* Server URL Row */}
+        <div className="flex items-center justify-between py-2">
+          <span className="text-xs font-sans font-semibold text-neutral-400 uppercase tracking-wider">Server URL</span>
+          <div 
+            className="liquid-glass border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2 cursor-pointer hover:border-white/20 transition-all"
+            onClick={() => copyToClipboard("rtmp://localhost:1935/live", "url")}
+          >
+            <span className="font-mono text-xs text-neutral-300">rtmp://localhost:1935/live</span>
+            {copiedUrl ? <Check className="w-3.5 h-3.5 text-[#2DD4BF]" strokeWidth={1.6} /> : <Copy className="w-3.5 h-3.5 text-neutral-500" strokeWidth={1.6} />}
+          </div>
+        </div>
+
+        <div className="h-px bg-white/10" />
+
+        {/* Stream Key Row */}
+        <div className="flex items-center justify-between py-2">
+          <span className="text-xs font-sans font-semibold text-neutral-400 uppercase tracking-wider">Stream Key</span>
+          <div 
+            className="liquid-glass border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2 cursor-pointer hover:border-white/20 transition-all"
+            onClick={() => user?.id && copyToClipboard(user.id, "key")}
+          >
+            <span className="font-mono text-xs text-neutral-300">
+              {user?.id ? `${user.id.slice(0, 10)}••••••••` : "••••••••••••••••"}
+            </span>
+            {copiedKey ? <Check className="w-3.5 h-3.5 text-[#2DD4BF]" strokeWidth={1.6} /> : <Copy className="w-3.5 h-3.5 text-neutral-500" strokeWidth={1.6} />}
+          </div>
+        </div>
+
+        <div className="h-px bg-white/10" />
+
+        {/* Audio Source Dropdown Row */}
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-sans font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Mic className="w-3.5 h-3.5 text-neutral-400" strokeWidth={1.6} />
+              Translate Audio From
+            </span>
+            <button 
+              onClick={() => setShowGuide(true)}
+              className="text-xs text-neutral-400 hover:text-white transition-colors flex items-center gap-1"
+            >
+              <HelpCircle className="w-3.5 h-3.5" strokeWidth={1.6} />
+              <span>Guide</span>
+            </button>
+          </div>
+          <select
+            value={translationSource}
+            onChange={handleSourceChange}
+            className="w-full text-xs font-sans bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2.5 text-white outline-none focus:border-white/30 transition-all cursor-pointer"
+          >
+            <option value="mic_only" className="bg-neutral-900 text-white">Microphone (Right channel)</option>
+            <option value="desktop_only" className="bg-neutral-900 text-white">Desktop (Left channel)</option>
+            <option value="mixed" className="bg-neutral-900 text-white">Mixed (Mono)</option>
+          </select>
+          <p className="text-[11px] font-sans text-neutral-500">
+            Source audio is automatically transcribed and translated into active channels.
+          </p>
+        </div>
+      </div>
       {showGuide && <OBSGuideModal onClose={() => setShowGuide(false)} />}
-    </section>
+    </GlassCard>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSignUp, useAuth } from "@clerk/nextjs";
+import { useSignUp, useAuth, useClerk } from "@clerk/nextjs";
 import { logger } from "@/lib/logger";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -37,11 +37,7 @@ export default function SignUpPage() {
 
     if (signUp.status === "complete") {
       await signUp.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            // debug probe removed;
-            return;
-          }
+        navigate: ({ decorateUrl }) => {
           const url = decorateUrl("/dashboard");
           if (url.startsWith("http")) {
             window.location.href = url;
@@ -58,14 +54,18 @@ export default function SignUpPage() {
     setGoogleLoading(true);
     setOauthError("");
     try {
-      const { error } = await signUp.sso({
-        strategy: "oauth_google",
-        redirectUrl: "/dashboard",
-        redirectCallbackUrl: "/sso-callback",
-      });
-      if (error) {
-        logger.error({ err: error }, "Google OAuth error");
-        setOauthError("Failed to start Google sign up. Please try again.");
+      if ("authenticateWithRedirect" in signUp && typeof (signUp as any).authenticateWithRedirect === "function") {
+        await (signUp as any).authenticateWithRedirect({
+          strategy: "oauth_google",
+          redirectUrl: "/sso-callback",
+          redirectUrlComplete: "/dashboard",
+        });
+      } else {
+        await signUp.sso({
+          strategy: "oauth_google",
+          redirectUrl: "/dashboard",
+          redirectCallbackUrl: "/sso-callback",
+        });
       }
     } catch (err) {
       logger.error({ err }, "Google OAuth exception");

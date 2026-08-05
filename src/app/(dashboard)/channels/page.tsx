@@ -15,6 +15,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
+import { GlassCard } from "@/app/components/GlassCard";
 
 type ChannelData = {
   id: string;
@@ -45,7 +46,7 @@ export default function ChannelsPage() {
       const res = await fetch("/api/channels");
       if (res.ok) {
         const data = await res.json();
-        setChannels(data.channels);
+        setChannels(data.channels || []);
       }
     } catch (err) {
       logger.error({ err }, "Channels fetch failed");
@@ -68,7 +69,12 @@ export default function ChannelsPage() {
           languageId,
           rtmpUrl: editRtmpUrl || null,
           rtmpKey: editRtmpKey || null,
-          enabled: !!(editRtmpKey) || (!editRtmpKey && channels.find(c => c.id === languageId)?.hasRtmpKey ? channels.find(c => c.id === languageId)?.enabled : false),
+          enabled:
+            !!editRtmpKey ||
+            (!editRtmpKey &&
+            channels.find((c) => c.id === languageId)?.hasRtmpKey
+              ? channels.find((c) => c.id === languageId)?.enabled
+              : false),
         }),
       });
 
@@ -143,62 +149,52 @@ export default function ChannelsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-[900px] pt-2">
+    <div className="space-y-8 max-w-5xl">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[32px] font-syne font-bold text-gray-900 tracking-tight">
-            Channels
-          </h1>
-          <p className="text-[14px] text-gray-500 font-dm-sans mt-1">
-            Configure language channels for your multilingual pipeline.
-          </p>
-        </div>
+      <div>
+        <h1 className="text-4xl lg:text-5xl font-sans font-bold text-white tracking-tight leading-none">
+          Chan<span className="font-serif italic font-normal">nels</span>
+        </h1>
+        <p className="text-sm font-sans text-neutral-400 mt-2">
+          Configure language channels for your multilingual pipeline.
+        </p>
       </div>
 
       {/* Channels List */}
       {loading ? (
-        <div className="flex items-center gap-3 py-12 justify-center">
-          <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-          <p className="text-[13px] text-gray-400 font-dm-sans">
+        <div className="flex items-center justify-center gap-3 py-16">
+          <Loader2 className="w-5 h-5 text-neutral-500 animate-spin" />
+          <p className="text-xs text-neutral-400 font-sans">
             Loading channels...
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {channels.map((ch) => {
+          {channels.map((ch, idx) => {
             const isEditing = editingId === ch.id;
             const isDeleting = deleteConfirm === ch.id;
+            const displayScript = ch.script || ch.name || "A";
+            const firstChar = displayScript.charAt(0);
 
             return (
-              <div
+              <GlassCard
                 key={ch.id}
-                className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] rounded-[28px] overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_50px_rgba(0,0,0,0.06)]"
+                delay={idx * 0.05}
+                className="flex flex-col"
               >
                 {/* Channel Header */}
-                <div className="px-7 pt-6 pb-4 flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    {/* Language icon */}
-                    <div
-                      className="w-12 h-12 rounded-[16px] bg-white shadow-sm flex items-center justify-center relative overflow-hidden"
-                    >
-                      <div
-                        className="absolute inset-0 opacity-10 blur-md"
-                        style={{ backgroundColor: ch.color }}
-                      />
-                      <span
-                        className="text-[20px] font-bold z-10"
-                        style={{ color: ch.configured ? ch.color : undefined }}
-                      >
-                        {ch.script.charAt(0)}
-                      </span>
+                <div className="p-6 pb-4 flex items-start justify-between">
+                  <div className="flex items-center gap-3.5">
+                    {/* Language script tile */}
+                    <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center font-sans font-bold text-lg text-white shrink-0">
+                      {firstChar}
                     </div>
 
                     <div>
-                      <h3 className="text-[18px] font-syne font-bold text-gray-900">
-                        {ch.script}
+                      <h3 className="font-serif italic text-2xl font-normal text-white leading-tight">
+                        {displayScript}
                       </h3>
-                      <p className="text-[13px] font-dm-sans text-gray-500">
+                      <p className="text-xs font-sans text-neutral-400 mt-0.5">
                         {ch.name}
                       </p>
                     </div>
@@ -206,12 +202,12 @@ export default function ChannelsPage() {
 
                   {/* Status badge */}
                   <span
-                    className={`text-[11px] font-dm-sans font-bold px-3 py-1.5 rounded-[10px] ${
+                    className={`text-xs font-sans font-medium px-2.5 py-1 rounded-full ${
                       ch.configured && ch.enabled
-                        ? "bg-[#10B981]/10 text-[#10B981]"
+                        ? "border border-[#2DD4BF]/40 text-[#2DD4BF] bg-transparent"
                         : ch.configured
-                        ? "bg-gray-100 text-gray-500"
-                        : "bg-transparent text-gray-400 border border-gray-200 border-dashed"
+                        ? "border border-white/15 text-neutral-400 bg-transparent"
+                        : "border border-dashed border-white/20 text-neutral-500 bg-transparent"
                     }`}
                   >
                     {ch.configured && ch.enabled
@@ -222,73 +218,74 @@ export default function ChannelsPage() {
                   </span>
                 </div>
 
-                <div className="px-7 pb-6">
-                  {/* ── Configured view ── */}
+                <div className="px-6 pb-6 mt-auto">
+                  {/* Configured View */}
                   {ch.configured && !isEditing && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-4 p-3 rounded-[12px] bg-gray-50/80">
-                        <Radio className="w-4 h-4 text-gray-400 shrink-0" />
-                        <p
-                          className="text-[12px] text-gray-500 truncate"
-                          style={{ fontFamily: "var(--font-jetbrains)" }}
-                        >
-                          {ch.rtmpUrl || "RTMP URL configured"}
+                    <div className="space-y-4">
+                      {/* RTMP Row in bordered inset box */}
+                      <div className="liquid-glass border border-white/10 rounded-xl p-3 flex items-center gap-2">
+                        <Radio className="w-4 h-4 text-neutral-400 shrink-0" strokeWidth={1.6} />
+                        <p className="font-mono text-xs text-neutral-300 truncate">
+                          {ch.rtmpUrl || "rtmp://a.rtmp.youtube.com/live2"}
                         </p>
-                        <span className="text-[11px] text-[#10B981] font-medium ml-auto shrink-0">
-                          Key saved
+                        <span className="text-xs text-[#2DD4BF] font-medium ml-auto shrink-0 flex items-center gap-1">
+                          ✓ Key saved
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        {/* Toggle */}
-                        <button
-                          onClick={() => handleToggle(ch)}
-                          className={`w-[40px] h-[22px] rounded-full relative transition-colors duration-200 ${
-                            ch.enabled ? "bg-[#10B981]" : "bg-gray-200"
-                          }`}
-                        >
-                          <div
-                            className={`absolute top-[2px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200 ${
-                              ch.enabled ? "left-[20px]" : "left-[2px]"
+                      {/* Toggle & Action Buttons */}
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-3">
+                          {/* Switch toggle */}
+                          <button
+                            onClick={() => handleToggle(ch)}
+                            className={`w-10 h-5 rounded-full relative transition-colors duration-200 cursor-pointer ${
+                              ch.enabled ? "bg-white" : "bg-neutral-800"
                             }`}
-                          />
-                        </button>
-                        <span className="text-[12px] font-dm-sans text-gray-500">
-                          {ch.enabled ? "Enabled" : "Disabled"}
-                        </span>
+                          >
+                            <div
+                              className={`absolute top-0.5 w-4 h-4 bg-black rounded-full transition-transform duration-200 ${
+                                ch.enabled ? "translate-x-5" : "translate-x-0.5"
+                              }`}
+                            />
+                          </button>
+                          <span className="text-xs font-sans text-neutral-400">
+                            {ch.enabled ? "Enabled" : "Disabled"}
+                          </span>
+                        </div>
 
-                        <div className="ml-auto flex gap-2">
+                        <div className="flex items-center gap-1">
                           <button
                             onClick={() => startEdit(ch)}
-                            className="p-2 rounded-[10px] text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                            className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                           >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="w-4 h-4" strokeWidth={1.6} />
                           </button>
                           <button
                             onClick={() => setDeleteConfirm(ch.id)}
-                            className="p-2 rounded-[10px] text-gray-400 hover:text-[#EF4444] hover:bg-[#FEF2F2] transition-colors"
+                            className="p-2 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" strokeWidth={1.6} />
                           </button>
                         </div>
                       </div>
 
                       {/* Delete confirmation inline */}
                       {isDeleting && (
-                        <div className="mt-3 p-3 rounded-[12px] bg-[#FEF2F2] border border-[#FEE2E2] animate-[fade-in_150ms_ease]">
-                          <p className="text-[12px] font-dm-sans text-[#991B1B] mb-2">
+                        <div className="p-3 rounded-xl bg-red-950/30 border border-red-500/30 space-y-2 mt-2">
+                          <p className="text-xs font-sans text-red-200">
                             Remove this channel? The RTMP key will be deleted.
                           </p>
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleDelete(ch.id)}
-                              className="px-3 py-1.5 rounded-[10px] text-[12px] font-semibold bg-[#EF4444] text-white hover:bg-[#DC2626] transition-colors"
+                              className="px-3 py-1 rounded-full text-xs font-semibold bg-red-500 text-white hover:bg-red-600 transition-colors"
                             >
                               Remove
                             </button>
                             <button
                               onClick={() => setDeleteConfirm(null)}
-                              className="px-3 py-1.5 rounded-[10px] text-[12px] font-medium text-gray-500 hover:bg-gray-100 transition-colors"
+                              className="px-3 py-1 rounded-full text-xs font-medium text-neutral-400 hover:text-white transition-colors"
                             >
                               Cancel
                             </button>
@@ -298,26 +295,24 @@ export default function ChannelsPage() {
                     </div>
                   )}
 
-                  {/* ── Not configured (Setup) or Editing ── */}
+                  {/* Unconfigured (Setup) or Editing */}
                   {(!ch.configured || isEditing) && (
                     <div className="space-y-3">
                       {!isEditing && !ch.configured && (
                         <button
                           onClick={() => startEdit(ch)}
-                          className="w-full p-4 rounded-[16px] border-2 border-dashed border-gray-200 hover:border-[#F5821F]/40 text-gray-400 hover:text-[#F5821F] transition-all group flex items-center justify-center gap-2"
+                          className="w-full py-3.5 border border-dashed border-white/20 hover:border-white/40 rounded-xl text-xs font-medium text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer"
                         >
-                          <Plus className="w-4 h-4" />
-                          <span className="text-[13px] font-dm-sans font-medium">
-                            Configure channel
-                          </span>
+                          <Plus className="w-4 h-4" strokeWidth={1.6} />
+                          <span>Configure channel</span>
                         </button>
                       )}
 
                       {isEditing && (
-                        <div className="space-y-3 animate-[fade-slide-up_200ms_ease-out_forwards] opacity-0">
-                          {/* RTMP URL */}
+                        <div className="space-y-3 pt-1">
+                          {/* RTMP Server URL */}
                           <div>
-                            <label className="text-[12px] font-dm-sans font-semibold text-gray-600 mb-1.5 block">
+                            <label className="text-[11px] font-sans font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">
                               RTMP Server URL
                             </label>
                             <input
@@ -325,13 +320,13 @@ export default function ChannelsPage() {
                               value={editRtmpUrl}
                               onChange={(e) => setEditRtmpUrl(e.target.value)}
                               placeholder="rtmp://a.rtmp.youtube.com/live2"
-                              className="w-full rounded-[12px] border border-gray-200 bg-gray-50/50 px-3.5 py-3 text-[13px] text-gray-900 outline-none placeholder:text-gray-400 focus:border-[#F5821F]/40 focus:ring-2 focus:ring-[#F5821F]/10 transition-all"
+                              className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-3.5 py-2.5 text-xs text-white outline-none font-mono placeholder:text-neutral-600 focus:border-white/30 transition-all"
                             />
                           </div>
 
-                          {/* RTMP Key */}
+                          {/* Stream Key */}
                           <div>
-                            <label className="text-[12px] font-dm-sans font-semibold text-gray-600 mb-1.5 block">
+                            <label className="text-[11px] font-sans font-semibold text-neutral-400 uppercase tracking-wider mb-1.5 block">
                               Stream Key
                             </label>
                             <div className="relative">
@@ -344,58 +339,53 @@ export default function ChannelsPage() {
                                     ? "Enter new key to replace..."
                                     : "Paste your stream key..."
                                 }
-                                className="w-full rounded-[12px] border border-gray-200 bg-gray-50/50 px-3.5 py-3 pr-10 text-[13px] text-gray-900 outline-none placeholder:text-gray-400 focus:border-[#F5821F]/40 focus:ring-2 focus:ring-[#F5821F]/10 transition-all"
-                                style={{ fontFamily: "var(--font-jetbrains)" }}
+                                className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-3.5 py-2.5 pr-10 text-xs text-white outline-none font-mono placeholder:text-neutral-600 focus:border-white/30 transition-all"
                               />
                               <button
                                 type="button"
                                 onClick={() => setShowRtmpKey(!showRtmpKey)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
                                 tabIndex={-1}
                               >
                                 {showRtmpKey ? (
-                                  <EyeOff className="w-4 h-4" />
+                                  <EyeOff className="w-4 h-4" strokeWidth={1.6} />
                                 ) : (
-                                  <Eye className="w-4 h-4" />
+                                  <Eye className="w-4 h-4" strokeWidth={1.6} />
                                 )}
                               </button>
                             </div>
                           </div>
 
-                          {/* Help link */}
+                          {/* Help Link */}
                           <a
                             href="https://support.google.com/youtube/answer/2907883"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[11px] font-dm-sans text-[#F5821F] hover:text-[#E8690A] inline-flex items-center gap-1 transition-colors"
+                            className="text-xs font-sans text-neutral-400 hover:text-white inline-flex items-center gap-1 transition-colors"
                           >
                             Where to find your stream key{" "}
-                            <ExternalLink className="w-3 h-3" />
+                            <ExternalLink className="w-3 h-3" strokeWidth={1.6} />
                           </a>
 
-                          {/* Action buttons */}
-                          <div className="flex gap-2 pt-1">
+                          {/* Form Action Buttons */}
+                          <div className="flex items-center gap-2 pt-2">
                             <button
                               onClick={() => handleSave(ch.id)}
                               disabled={saving || (!editRtmpKey && !ch.hasRtmpKey)}
-                              className={`px-4 py-2.5 rounded-[12px] text-[13px] font-semibold transition-all flex items-center gap-2 ${
-                                saving || (!editRtmpKey && !ch.hasRtmpKey)
-                                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                  : "bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.98] shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
-                              }`}
+                              className="px-4 py-2 rounded-full text-xs font-semibold bg-white text-black hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-2"
                             >
                               {saving ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                               ) : (
-                                <Check className="w-4 h-4" />
+                                <Check className="w-3.5 h-3.5" strokeWidth={1.6} />
                               )}
                               {saving ? "Saving..." : "Save"}
                             </button>
                             <button
                               onClick={cancelEdit}
-                              className="px-4 py-2.5 rounded-[12px] text-[13px] font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all flex items-center gap-2"
+                              className="px-4 py-2 rounded-full text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2 cursor-pointer"
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-3.5 h-3.5" strokeWidth={1.6} />
                               Cancel
                             </button>
                           </div>
@@ -404,7 +394,7 @@ export default function ChannelsPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </GlassCard>
             );
           })}
         </div>

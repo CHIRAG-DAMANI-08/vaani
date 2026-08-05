@@ -1,8 +1,11 @@
 "use client";
 
+// Refreshed SSR safe component - Model & Speaker mapped
 import { useState, useEffect, useRef } from "react";
-import { FlaskConical, Play, Loader2, Volume2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { FlaskConical, Play, Pause, Loader2, AlertCircle, ChevronDown, ChevronUp, Mic } from "lucide-react";
 import { LANGUAGE_REGISTRY } from "@/lib/language-registry";
+import { GlassCard } from "@/app/components/GlassCard";
+import { useCSRF } from "@/lib/use-csrf";
 
 const PRESETS = [
   "Hello, welcome to my stream!",
@@ -12,10 +15,22 @@ const PRESETS = [
   "Donation received — thank you!",
 ];
 
+const VOICE_SPEAKERS = [
+  { id: "shubh", name: "Shubh", gender: "Male" },
+  { id: "anushka", name: "Anushka", gender: "Female" },
+  { id: "manisha", name: "Manisha", gender: "Female" },
+  { id: "vidya", name: "Vidya", gender: "Female" },
+  { id: "arjun", name: "Arjun", gender: "Male" },
+  { id: "arvind", name: "Arvind", gender: "Male" },
+  { id: "amol", name: "Amol", gender: "Male" },
+  { id: "amartya", name: "Amartya", gender: "Male" },
+];
+
 type TestResult = {
   languageId: string;
   translatedText: string;
   audioBase64: string;
+  speaker?: string;
 };
 
 type TestTimings = {
@@ -30,60 +45,40 @@ function formatMs(ms: number): string {
 
 export function TestModePanel() {
   const [text, setText] = useState("");
-  const [selectedLangs, setSelectedLangs] = useState<string[]>([]);
-  const [availableLangs, setAvailableLangs] = useState<{ id: string; name: string; flag: string }[]>([]);
+  const availableLangs = LANGUAGE_REGISTRY.map((l) => ({
+    id: l.id,
+    name: l.name,
+    flag: l.flag,
+  }));
+
+  const [selectedLangs, setSelectedLangs] = useState<string[]>(() => {
+    const first = LANGUAGE_REGISTRY[0];
+    return first ? [first.id] : [];
+  });
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<TestResult[]>([]);
   const [timings, setTimings] = useState<TestTimings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState(false);
-  const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
 
-  // Fetch available channels
+  const [selectedSpeaker, setSelectedSpeaker] = useState<string>("shubh");
+  const pace = 1.0;
+
   useEffect(() => {
-    fetch("/api/channels")
-      .then((r) => r.json())
-      .then((data) => {
-        const channels: { languageId: string; enabled: boolean }[] = Array.isArray(data.channels)
-          ? data.channels
-          : Array.isArray(data)
-          ? data
-          : [];
-
-        const enabledLangIds = channels
-          .filter((c) => c.enabled !== false)
-          .map((c) => c.languageId);
-
-        // Also always show all supported languages even if no channels configured yet
-        const allLangIds = enabledLangIds.length > 0
-          ? enabledLangIds
-          : LANGUAGE_REGISTRY.map((l) => l.id);
-
-        const langs = allLangIds
-          .map((id) => {
-            const entry = LANGUAGE_REGISTRY.find((l) => l.id === id);
-            return entry ? { id: entry.id, name: entry.name, flag: entry.flag } : null;
-          })
-          .filter(Boolean) as { id: string; name: string; flag: string }[];
-
-        setAvailableLangs(langs);
-        // Default: select first language
-        if (langs.length > 0) setSelectedLangs([langs[0].id]);
-      })
-      .catch(() => {
-        // Fallback: show all languages
-        const langs = LANGUAGE_REGISTRY.map((l) => ({ id: l.id, name: l.name, flag: l.flag }));
-        setAvailableLangs(langs);
-        if (langs.length > 0) setSelectedLangs([langs[0].id]);
-      });
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("vaani_tts_speaker");
+      if (saved) setSelectedSpeaker(saved);
+    }
   }, []);
 
-  const toggleLang = (id: string) => {
-    setSelectedLangs((prev) =>
-      prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id]
-    );
+  const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
+
+  const selectLang = (id: string) => {
+    setSelectedLangs([id]);
   };
+
+  const { csrfToken } = useCSRF();
 
   const handleRun = async () => {
     if (!text.trim() || selectedLangs.length === 0 || loading) return;
@@ -93,17 +88,17 @@ export function TestModePanel() {
     setTimings(null);
     setPlayingIdx(null);
 
-    const speaker = localStorage.getItem("vaani_tts_speaker") || "shubh";
-    const pace = parseFloat(localStorage.getItem("vaani_tts_pace") || "1.0");
-
     try {
       const res = await fetch("/api/test-pipeline", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken || "",
+        },
         body: JSON.stringify({
           text: text.trim(),
           targetLanguages: selectedLangs,
-          speaker,
+          speaker: selectedSpeaker,
           pace,
         }),
       });
@@ -115,6 +110,10 @@ export function TestModePanel() {
             ? "No Sarvam API key configured. Add one in Settings."
             : data.error === "TEXT_TOO_LONG"
             ? "Text is too long (max 500 characters)."
+            : data.error === "TTS_FAILED"
+            ? "Audio generation failed for selected language/voice combination."
+            : data.error === "TRANSLATION_FAILED"
+            ? "Text translation failed. Check Sarvam API key and connection."
             : `Error: ${data.error || "Pipeline failed"}`
         );
         return;
@@ -123,12 +122,10 @@ export function TestModePanel() {
       setResults(data.results || []);
       setTimings(data.timings);
 
-      // Auto-play first result
       if (data.results?.length > 0) {
         setTimeout(() => {
-          audioRefs.current[0]?.play().catch(() => {});
-          setPlayingIdx(0);
-        }, 150);
+          playAudio(0);
+        }, 200);
       }
     } catch {
       setError("Network error — is the server running?");
@@ -137,49 +134,75 @@ export function TestModePanel() {
     }
   };
 
+  const playAudio = (idx: number) => {
+    const audioEl = audioRefs.current[idx];
+    if (!audioEl) return;
+
+    audioRefs.current.forEach((el, i) => {
+      if (el && i !== idx) {
+        el.pause();
+        el.currentTime = 0;
+      }
+    });
+
+    if (playingIdx === idx) {
+      audioEl.pause();
+      setPlayingIdx(null);
+    } else {
+      audioEl.currentTime = 0;
+      audioEl
+        .play()
+        .then(() => setPlayingIdx(idx))
+        .catch((err) => {
+          console.warn("Autoplay prevented by browser:", err);
+          setPlayingIdx(null);
+        });
+    }
+  };
+
   const getLanguageInfo = (id: string) =>
-    LANGUAGE_REGISTRY.find((l) => l.id === id) || { name: id, flag: "🌐", nativeName: "" };
+    LANGUAGE_REGISTRY.find((l) => l.id === id || l.bcp47 === id) || { name: id, flag: "🌐", nativeName: "" };
 
   return (
-    <div className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-[28px] overflow-hidden">
+    <GlassCard className="w-full">
       {/* Header */}
       <div
-        className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 cursor-pointer"
+        className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/10 cursor-pointer hover:bg-white/[0.02] transition-colors"
         onClick={() => setCollapsed((c) => !c)}
       >
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-[10px] bg-amber-50 flex items-center justify-center">
-            <FlaskConical className="w-4 h-4 text-amber-500" />
+        <div className="flex items-center gap-3.5">
+          <div className="w-9 h-9 rounded-xl liquid-glass border border-white/10 flex items-center justify-center text-white">
+            <FlaskConical className="w-4 h-4" strokeWidth={1.6} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-[15px] font-syne font-bold text-gray-900">Pipeline Test</h2>
-              <span className="text-[10px] font-bold tracking-widest text-amber-600 bg-amber-50 border border-amber-200/60 rounded-full px-2 py-0.5">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-base font-sans font-bold text-white tracking-tight">Pipeline Test</h2>
+              <span className="text-[10px] font-sans font-semibold tracking-wider text-neutral-300 border border-white/15 px-2.5 py-0.5 rounded-full uppercase">
                 OFFLINE MODE
               </span>
             </div>
-            <p className="text-[12px] font-dm-sans text-gray-400 mt-0.5">
-              Test your TTS voice without going live
+            <p className="text-xs font-sans text-neutral-400 mt-0.5">
+              Test your TTS voice without going live.
             </p>
           </div>
         </div>
-        <button className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-          {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+        <button className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors">
+          {collapsed ? <ChevronDown className="w-4 h-4" strokeWidth={1.6} /> : <ChevronUp className="w-4 h-4" strokeWidth={1.6} />}
         </button>
       </div>
 
       {!collapsed && (
-        <div className="p-6">
-          {/* Preset phrases */}
-          <div className="flex flex-wrap gap-2 mb-4">
+        <div className="p-6 space-y-5 cursor-default">
+          {/* Preset phrase pill buttons */}
+          <div className="flex flex-wrap gap-2">
             {PRESETS.map((preset) => (
               <button
                 key={preset}
                 onClick={() => setText(preset)}
-                className={`text-[12px] font-dm-sans px-3 py-1.5 rounded-full border transition-all ${
+                className={`text-xs font-sans px-3.5 py-1.5 rounded-full border transition-all cursor-pointer ${
                   text === preset
-                    ? "bg-[#F5821F]/10 border-[#F5821F]/30 text-[#F5821F] font-medium"
-                    : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-white hover:border-gray-300"
+                    ? "bg-white text-black border-white font-medium"
+                    : "liquid-glass border-white/10 text-neutral-300 hover:text-white hover:border-white/25"
                 }`}
               >
                 {preset}
@@ -188,33 +211,33 @@ export function TestModePanel() {
           </div>
 
           {/* Text input */}
-          <div className="relative mb-4">
+          <div className="relative">
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value.slice(0, 500))}
               placeholder="Type something to test your TTS voice..."
               rows={3}
-              className="w-full bg-gray-50/80 border border-gray-100 rounded-[16px] px-4 py-3 font-dm-sans text-[14px] text-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-[#F5821F]/20 transition-all placeholder:text-gray-400"
+              className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-4 py-3 font-sans text-sm text-white resize-none focus:outline-none focus:border-white/30 transition-all placeholder:text-neutral-500"
             />
-            <span className="absolute bottom-3 right-4 text-[11px] text-gray-300 font-mono">
+            <span className="absolute bottom-3 right-4 text-[11px] text-neutral-500 font-mono">
               {text.length}/500
             </span>
           </div>
 
           {/* Language selector */}
-          <div className="mb-5">
-            <p className="text-[12px] font-dm-sans font-bold text-gray-500 uppercase tracking-wider mb-2">
+          <div>
+            <p className="text-[11px] font-sans font-semibold text-neutral-400 uppercase tracking-wider mb-2">
               Translate to
             </p>
             <div className="flex flex-wrap gap-2">
               {availableLangs.map((lang) => (
                 <button
                   key={lang.id}
-                  onClick={() => toggleLang(lang.id)}
-                  className={`flex items-center gap-1.5 text-[13px] font-dm-sans px-3 py-1.5 rounded-full border transition-all ${
+                  onClick={() => selectLang(lang.id)}
+                  className={`flex items-center gap-1.5 text-xs font-sans px-3.5 py-1.5 rounded-full border transition-all cursor-pointer ${
                     selectedLangs.includes(lang.id)
-                      ? "bg-gray-900 border-gray-900 text-white font-medium shadow-sm"
-                      : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-white"
+                      ? "bg-white text-black border-white font-medium shadow-sm"
+                      : "liquid-glass border-white/10 text-neutral-400 hover:text-white hover:border-white/25"
                   }`}
                 >
                   <span>{lang.flag}</span>
@@ -224,79 +247,130 @@ export function TestModePanel() {
             </div>
           </div>
 
-          {/* Run button + error */}
-          <div className="flex items-center gap-3 mb-4">
+          {/* Speaker selector */}
+          <div>
+            <p className="text-[11px] font-sans font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+              Voice
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {VOICE_SPEAKERS.map((spk) => (
+                <button
+                  key={spk.id}
+                  onClick={() => {
+                    setSelectedSpeaker(spk.id);
+                    localStorage.setItem("vaani_tts_speaker", spk.id);
+                  }}
+                  className={`flex items-center gap-1.5 text-xs font-sans px-3.5 py-1.5 rounded-full border transition-all cursor-pointer ${
+                    selectedSpeaker === spk.id
+                      ? "bg-white text-black border-white font-medium shadow-sm"
+                      : "liquid-glass border-white/10 text-neutral-400 hover:text-white hover:border-white/25"
+                  }`}
+                >
+                  <Mic className="w-3.5 h-3.5" strokeWidth={1.6} />
+                  <span>{spk.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Run button + timing stats */}
+          <div className="flex items-center gap-4 pt-1">
             <button
               onClick={handleRun}
               disabled={!text.trim() || selectedLangs.length === 0 || loading}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-[14px] font-bold text-white bg-gradient-to-r from-[#F5821F] to-[#E8690A] shadow-[0_4px_12px_rgba(245,130,31,0.3)] hover:shadow-[0_6px_20px_rgba(245,130,31,0.4)] hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_12px_rgba(245,130,31,0.3)] transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold text-black bg-white hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm"
             >
               {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <Play className="w-4 h-4 fill-current" />
+                <Play className="w-3.5 h-3.5 fill-current" />
               )}
-              {loading ? "Processing..." : "▶ Test Pipeline"}
+              {loading ? "Processing..." : "Test Pipeline"}
             </button>
 
             {timings && (
-              <span className="text-[12px] font-dm-sans text-gray-400">
+              <span className="text-xs font-sans text-neutral-400">
                 Translate: {formatMs(timings.translate)} · TTS: {formatMs(timings.tts)} · Total:{" "}
-                <span className="font-medium text-gray-600">{formatMs(timings.total)}</span>
+                <span className="font-medium text-white">{formatMs(timings.total)}</span>
               </span>
             )}
           </div>
 
           {error && (
-            <div className="flex items-start gap-2 p-3 rounded-[12px] bg-red-50 border border-red-100 mb-4">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-              <p className="text-[13px] font-dm-sans text-red-600">{error}</p>
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-red-950/30 border border-red-500/30">
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" strokeWidth={1.6} />
+              <p className="text-xs font-sans text-red-300">{error}</p>
             </div>
           )}
 
-          {/* Results */}
+          {/* Results list */}
           {results.length > 0 && (
-            <div className="space-y-3">
-              <div className="h-px bg-gray-100" />
-              <p className="text-[12px] font-dm-sans font-bold text-gray-400 uppercase tracking-wider">
+            <div className="space-y-3 pt-2">
+              <div className="h-px bg-white/10" />
+              <p className="text-[11px] font-sans font-semibold text-neutral-400 uppercase tracking-wider">
                 Results
               </p>
               {results.map((result, idx) => {
                 const lang = getLanguageInfo(result.languageId);
                 const audioSrc = `data:audio/wav;base64,${result.audioBase64}`;
+                const isPlaying = playingIdx === idx;
                 return (
                   <div
-                    key={result.languageId}
-                    className="flex items-start gap-4 p-4 rounded-[16px] bg-gray-50/80 border border-gray-100"
+                    key={idx}
+                    className="flex items-start gap-4 p-4 rounded-xl liquid-glass border border-white/10"
                   >
                     <div className="text-2xl mt-0.5">{lang.flag}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[13px] font-syne font-bold text-gray-800">
-                          {lang.name}
-                        </span>
-                        {lang.nativeName && (
-                          <span className="text-[11px] text-gray-400">{lang.nativeName}</span>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-sans font-bold text-white">
+                            {lang.name}
+                          </span>
+                          {lang.nativeName && (
+                            <span className="text-xs text-neutral-400">{lang.nativeName}</span>
+                          )}
+                        </div>
+                        {result.speaker && (
+                          <span className="text-[10px] font-sans font-medium px-2 py-0.5 rounded-full border border-white/15 text-neutral-400 capitalize">
+                            Voice: {result.speaker}
+                          </span>
                         )}
                       </div>
-                      <p className="text-[14px] font-dm-sans text-gray-700 italic leading-relaxed mb-2">
+                      <p className="text-sm font-sans text-neutral-300 italic leading-relaxed mb-3">
                         &ldquo;{result.translatedText}&rdquo;
                       </p>
-                      <div className="flex items-center gap-2">
-                        <Volume2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => playAudio(idx)}
+                          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                            isPlaying
+                              ? "bg-[#2DD4BF] text-black border-[#2DD4BF]"
+                              : "bg-white/10 hover:bg-white/20 text-white border-white/10"
+                          }`}
+                        >
+                          {isPlaying ? (
+                            <>
+                              <Pause className="w-3.5 h-3.5 fill-current" />
+                              <span>Pause</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>Listen Audio</span>
+                            </>
+                          )}
+                        </button>
+
                         <audio
                           ref={(el) => { audioRefs.current[idx] = el; }}
                           src={audioSrc}
-                          controls
                           onPlay={() => setPlayingIdx(idx)}
+                          onPause={() => setPlayingIdx((prev) => (prev === idx ? null : prev))}
                           onEnded={() => setPlayingIdx(null)}
-                          className="h-8 w-full max-w-[280px] opacity-80"
+                          className="hidden"
                         />
-                        {playingIdx === idx && (
-                          <span className="text-[11px] text-[#F5821F] font-medium animate-pulse">
-                            ▶ Playing
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -306,6 +380,6 @@ export function TestModePanel() {
           )}
         </div>
       )}
-    </div>
+    </GlassCard>
   );
 }

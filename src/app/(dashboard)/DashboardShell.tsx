@@ -4,15 +4,18 @@ import { useState, useEffect } from "react";
 import { AudioMeter } from "./dashboard/AudioMeter";
 import { PreflightModal } from "@/app/components/PreflightModal";
 import { OnboardingWizard } from "@/app/components/OnboardingWizard";
+import { PageTransition } from "@/app/components/PageTransition";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton, useUser } from "@clerk/nextjs";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard,
   Radio,
   Settings,
   Menu,
   X,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,24 +27,29 @@ const navItems = [
 function StreamStatusPill({ status }: { status: "ready" | "live" | "error" }) {
   if (status === "ready") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] text-[13px] font-medium bg-white text-gray-500 shadow-sm border border-gray-100">
+      <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium liquid-glass border border-white/10 text-white/80 shadow-sm">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(170,15%,45%)] opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#2DD4BF]" />
+        </span>
         Ready
       </span>
     );
   }
   if (status === "live") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] text-[13px] font-medium bg-[#10B981] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)]">
-        <span className="relative flex h-[6px] w-[6px]">
-          <span className="animate-[live-pulse_1.8s_ease-in-out_infinite] absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-          <span className="relative inline-flex rounded-full h-[6px] w-[6px] bg-white" />
+      <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium liquid-glass border border-[#2DD4BF]/40 text-[#2DD4BF] shadow-[0_0_15px_rgba(45,212,191,0.15)]">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2DD4BF] opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#2DD4BF]" />
         </span>
         Live
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] text-[13px] font-medium bg-[#EF4444] text-white shadow-sm border border-[#EF4444]/20">
+    <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium liquid-glass border border-red-500/30 text-red-400">
+      <span className="h-2 w-2 rounded-full bg-red-500" />
       Error
     </span>
   );
@@ -50,6 +58,7 @@ function StreamStatusPill({ status }: { status: "ready" | "live" | "error" }) {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useUser();
+  const shouldReduceMotion = useReducedMotion();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [estimatedCost, setEstimatedCost] = useState(0);
@@ -65,7 +74,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       try {
         const [keyRes, obsRes] = await Promise.all([
           fetch("/api/key/status"),
-          fetch("/api/obs/status")
+          fetch("/api/obs/status"),
         ]);
         if (keyRes.ok) {
           const keyData = await keyRes.json();
@@ -81,28 +90,31 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     }
     fetchStatuses();
 
-    // Accumulate relay unsubscribe fns here so the effect's cleanup can run
-    // them on unmount / pathname change. Without this, listeners accumulate in
-    // the OBSRelayManager's Sets on every navigation.
     const unsubFns: Array<() => void> = [];
 
     import("@/lib/obs-relay-client").then((mod) => {
-       mod.obsRelayManager.initRelay();
+      mod.obsRelayManager.initRelay();
 
-       unsubFns.push(mod.obsRelayManager.subscribeStreaming((streaming) => {
-         setIsStreaming(streaming);
-       }));
+      unsubFns.push(
+        mod.obsRelayManager.subscribeStreaming((streaming) => {
+          setIsStreaming(streaming);
+        })
+      );
 
-       unsubFns.push(mod.obsRelayManager.subscribeSnapshot((snapshot) => {
-         setEstimatedCost(snapshot.stats?.estimatedCostINR ?? 0);
-       }));
+      unsubFns.push(
+        mod.obsRelayManager.subscribeSnapshot((snapshot) => {
+          setEstimatedCost(snapshot.stats?.estimatedCostINR ?? 0);
+        })
+      );
 
-       unsubFns.push(mod.obsRelayManager.subscribeErrors((error) => {
-         toast.error(error, {
-           description: "Check your settings and try again.",
-           duration: 5000,
-         });
-       }));
+      unsubFns.push(
+        mod.obsRelayManager.subscribeErrors((error) => {
+          toast.error(error, {
+            description: "Check your settings and try again.",
+            duration: 5000,
+          });
+        })
+      );
     });
 
     return () => {
@@ -110,133 +122,158 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
+  const pillTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : { type: "spring", stiffness: 380, damping: 34 };
+
   return (
-    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[#F5F2ED] text-gray-900 font-sans">
+    <div className="relative h-screen w-screen overflow-hidden bg-black text-white font-sans selection:bg-white selection:text-black">
       <OnboardingWizard />
       {showPreflight && (
-        <PreflightModal 
-          onClose={() => setShowPreflight(false)} 
+        <PreflightModal
+          onClose={() => setShowPreflight(false)}
           onStart={() => {
             setShowPreflight(false);
-            // Backend auto-starts when OBS streams to RTMP — this modal is just a readiness check.
-          }} 
+          }}
         />
       )}
-      {/* ── Vibrant Floating Mesh Background ── */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <div 
-          className="absolute rounded-full filter blur-[100px] md:blur-[140px] opacity-70 animate-[float-slow_20s_ease-in-out_infinite]"
-          style={{
-            width: '80vw', height: '80vh', left: '-10%', top: '-10%',
-            background: 'linear-gradient(135deg, #F9AB7F 0%, #F5CE98 100%)'
-          }}
-        />
-        <div 
-          className="absolute rounded-full filter blur-[120px] md:blur-[160px] opacity-60 animate-[float-slow_25s_ease-in-out_infinite_reverse]"
-          style={{
-            width: '70vw', height: '70vh', right: '-5%', bottom: '-10%',
-            background: 'linear-gradient(135deg, #A78BFA 0%, #FDA4AF 100%)'
-          }}
-        />
-         <div 
-          className="absolute rounded-full filter blur-[100px] md:blur-[140px] opacity-50 animate-[float-slow_30s_ease-in-out_infinite]"
-          style={{
-            width: '60vw', height: '60vh', left: '30%', top: '40%',
-            background: 'linear-gradient(135deg, #6EE7B7 0%, #3B82F6 100%)'
-          }}
-        />
-      </div>
 
-      {/* ── Padded Main Layout ── */}
-      <div className="relative z-10 w-full h-full flex p-1 md:p-4 lg:p-6 gap-6">
-        
-        {/* Desktop Detached Sidebar (Pill) */}
-        <aside className="hidden lg:flex flex-col w-[280px] glass-panel h-full shrink-0 relative overflow-hidden group">
-          
-          {/* Internal Sidebar Gradient Splash for depth */}
-          <div className="absolute top-0 left-0 w-full h-[200px] bg-gradient-to-b from-white/60 to-transparent pointer-events-none z-0" />
-          
-          <div className="relative z-10 flex flex-col h-full">
-            {/* Logo */}
-            <div className="h-[90px] flex items-center px-8">
-              <Link href="/" className="font-syne font-bold text-[26px] tracking-tight text-gray-900 drop-shadow-sm">Vaani.</Link>
+      {/* Main Layout Grid */}
+      <div className="relative z-10 w-full h-full flex">
+        {/* Desktop Left Fixed Sidebar */}
+        <aside className="hidden lg:flex flex-col w-64 bg-[#0a0a0a] border-r border-white/10 h-full shrink-0 relative overflow-hidden">
+          <div className="flex flex-col h-full p-5">
+            {/* Concentric Circle Logo + vaani wordmark */}
+            <div className="h-16 flex items-center px-2">
+              <Link href="/" className="flex items-center gap-3 group">
+                <svg
+                  className="w-7 h-7 text-white transition-transform group-hover:scale-105"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                >
+                  <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                  <circle cx="12" cy="12" r="6.5" strokeOpacity="0.55" />
+                  <circle cx="12" cy="12" r="3" fill="currentColor" />
+                </svg>
+                <span className="font-sans font-bold text-2xl tracking-tight text-white">
+                  vaani
+                </span>
+              </Link>
             </div>
 
-            {/* Navigation Base */}
-            <nav className="flex-1 px-5 space-y-2 mt-4">
-              <p className="px-3 text-[11px] font-dm-sans font-bold uppercase tracking-[0.15em] text-gray-400 mb-4 mt-2">Menu</p>
-              
-              {navItems.map((item) => {
-                const isActive = pathname.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-4 px-4 py-[14px] rounded-[18px] text-[15px] font-medium transition-all duration-300 ${
-                      isActive
-                        ? "bg-white shadow-[0_8px_20px_rgba(0,0,0,0.06)] text-gray-900"
-                        : "text-gray-500 hover:bg-white/40 hover:text-gray-900 hover:shadow-sm"
-                    }`}
-                  >
-                    <div className={`flex items-center justify-center p-2 rounded-[12px] transition-colors ${isActive ? 'bg-[#FFF2E5] text-[#F5821F]' : 'bg-transparent text-gray-400'}`}>
-                       <item.icon className="w-5 h-5" />
-                    </div>
-                    {item.label}
-                  </Link>
-                );
-              })}
-              
-              {/* Other links */}
-              <div className="pt-4 mt-4 border-t border-[rgba(0,0,0,0.04)]">
-                 <p className="px-3 text-[11px] font-dm-sans font-bold uppercase tracking-[0.15em] text-gray-400 mb-4 mt-2">Personal</p>
-                 <Link
-                    href="/settings"
-                    className={`flex items-center gap-4 px-4 py-[14px] rounded-[18px] text-[15px] font-medium transition-all duration-300 ${
-                      pathname.startsWith('/settings')
-                        ? "bg-white shadow-[0_8px_20px_rgba(0,0,0,0.06)] text-gray-900"
-                        : "text-gray-500 hover:bg-white/40 hover:text-gray-900 hover:shadow-sm"
-                    }`}
-                  >
-                    <div className={`flex items-center justify-center p-2 rounded-[12px] transition-colors ${pathname.startsWith('/settings') ? 'bg-[#FFF2E5] text-[#F5821F]' : 'bg-transparent text-gray-400'}`}>
-                       <Settings className="w-5 h-5" />
-                    </div>
-                    Settings
-                  </Link>
+            {/* Navigation Menu */}
+            <nav className="flex-1 space-y-6 mt-6">
+              <div>
+                <p className="px-3 text-[11px] font-sans font-semibold uppercase tracking-[0.18em] text-neutral-500 mb-3">
+                  Menu
+                </p>
+                <div className="space-y-1.5">
+                  {navItems.map((item) => {
+                    const isActive = pathname?.startsWith(item.href) ?? false;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-medium transition-colors duration-300 ${
+                          isActive
+                            ? "text-white"
+                            : "text-neutral-400 hover:text-white hover:bg-white/[0.04]"
+                        }`}
+                      >
+                        {isActive && (
+                          <motion.span
+                            layoutId="sidebar-active-pill"
+                            transition={pillTransition}
+                            className="absolute inset-0 rounded-2xl bg-white/[0.07] border border-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_2px_10px_-4px_rgba(0,0,0,0.6)] backdrop-blur-sm z-0"
+                          />
+                        )}
+                        <span className="relative z-10 flex items-center gap-3">
+                          <item.icon
+                            className={`w-4 h-4 transition-colors duration-300 ${
+                              isActive ? "text-white" : "text-neutral-400"
+                            }`}
+                            strokeWidth={1.6}
+                          />
+                          {item.label}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/10">
+                <p className="px-3 text-[11px] font-sans font-semibold uppercase tracking-[0.18em] text-neutral-500 mb-3">
+                  Personal
+                </p>
+                {(() => {
+                  const isSettingsActive =
+                    pathname?.startsWith("/settings") ?? false;
+                  return (
+                    <Link
+                      href="/settings"
+                      className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-medium transition-colors duration-300 ${
+                        isSettingsActive
+                          ? "text-white"
+                          : "text-neutral-400 hover:text-white hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      {isSettingsActive && (
+                        <motion.span
+                          layoutId="sidebar-active-pill"
+                          transition={pillTransition}
+                          className="absolute inset-0 rounded-2xl bg-white/[0.07] border border-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_2px_10px_-4px_rgba(0,0,0,0.6)] backdrop-blur-sm z-0"
+                        />
+                      )}
+                      <span className="relative z-10 flex items-center gap-3">
+                        <Settings
+                          className={`w-4 h-4 transition-colors duration-300 ${
+                            isSettingsActive ? "text-white" : "text-neutral-400"
+                          }`}
+                          strokeWidth={1.6}
+                        />
+                        Settings
+                      </span>
+                    </Link>
+                  );
+                })()}
               </div>
             </nav>
 
-            {/* Stream Action Card inside Sidebar */}
-            <div className="p-5 mt-auto">
-              <div className="bg-white/60 backdrop-blur-md rounded-[24px] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.03)] border border-white/80 relative overflow-hidden">
-                <div className="absolute -right-4 -top-4 w-20 h-20 bg-gradient-to-br from-[#F5821F]/20 to-[#E8690A]/5 rounded-full blur-[20px]" />
-                
-                <p className="text-[12px] font-dm-sans font-bold text-gray-500 uppercase tracking-wider mb-1">Sarvam Usage</p>
-                <div className="flex items-baseline gap-1 mb-4">
-                  <span className="text-[28px] font-syne font-bold text-gray-900">₹{estimatedCost.toFixed(2)}</span>
+            {/* Bottom Usage & Action Box */}
+            <div className="mt-auto pt-4">
+              <div className="liquid-glass rounded-2xl p-4 border border-white/10 space-y-3">
+                <p className="text-[10px] font-sans font-semibold text-neutral-400 uppercase tracking-widest">
+                  Sarvam Usage
+                </p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-serif italic text-white">
+                    ₹{estimatedCost.toFixed(2)}
+                  </span>
                 </div>
-                
 
-
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  {/* Audio Level Meter */}
+                <div className="pt-2 border-t border-white/10 space-y-3">
                   <AudioMeter />
 
                   {isStreaming ? (
-                    <div className="mt-4 py-2 px-3 bg-[#EF4444]/10 rounded-lg text-center">
-                       <span className="text-[#EF4444] text-[13px] font-medium flex items-center justify-center gap-2">
-                         <span className="relative flex h-[6px] w-[6px]">
-                            <span className="animate-[live-pulse_1.8s_ease-in-out_infinite] absolute inline-flex h-full w-full rounded-full bg-[#EF4444] opacity-75" />
-                            <span className="relative inline-flex rounded-full h-[6px] w-[6px] bg-[#EF4444]" />
-                          </span>
-                         Live via OBS
-                       </span>
+                    <div className="py-2 px-3 bg-red-950/40 border border-red-500/30 rounded-xl text-center">
+                      <span className="text-red-400 text-xs font-medium flex items-center justify-center gap-2">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                        </span>
+                        Live via OBS
+                      </span>
                     </div>
                   ) : (
-                    <button 
+                    <button
                       onClick={() => setShowPreflight(true)}
-                      className="mt-4 w-full py-2 px-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg text-center transition-colors shadow-sm cursor-pointer"
+                      className="w-full py-2.5 px-4 bg-white text-black hover:bg-neutral-200 rounded-full text-xs font-semibold tracking-wide transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2"
                     >
-                       <span className="text-gray-700 text-[12px] font-bold">Check Readiness</span>
+                      <Zap className="w-3.5 h-3.5 fill-current" strokeWidth={1.6} />
+                      Check Readiness
                     </button>
                   )}
                 </div>
@@ -245,34 +282,46 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        {/* Main Glass Panel */}
-        <div className="flex-1 glass-panel h-[calc(100vh-8px)] md:h-full flex flex-col overflow-hidden relative">
-          
-          {/* Navbar inside Main Glass */}
-          <header className="h-[80px] lg:h-[100px] flex items-center justify-between px-6 lg:px-10 shrink-0 z-20">
-            {/* Mobile hamburger */}
-            <button
-              className="lg:hidden p-2.5 -ml-2 rounded-[14px] hover:bg-white/50 transition-colors shadow-sm bg-white/30 border border-white/50 text-gray-700"
-              onClick={() => setMobileOpen(!mobileOpen)}
-            >
-              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-            <div className="lg:hidden font-syne font-bold text-[22px] text-gray-900">Vaani.</div>
+        {/* Main Area */}
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-black">
+          {/* Top Bar Header */}
+          <header className="h-16 lg:h-20 flex items-center justify-between px-6 lg:px-10 shrink-0 border-b border-white/10 bg-black/80 backdrop-blur-md z-20">
+            {/* Mobile Hamburger & Logo */}
+            <div className="flex items-center gap-3 lg:hidden">
+              <button
+                className="p-2 rounded-xl liquid-glass border border-white/10 text-neutral-300 hover:text-white"
+                onClick={() => setMobileOpen(!mobileOpen)}
+              >
+                {mobileOpen ? (
+                  <X className="w-5 h-5" strokeWidth={1.6} />
+                ) : (
+                  <Menu className="w-5 h-5" strokeWidth={1.6} />
+                )}
+              </button>
+              <span className="font-sans font-bold text-xl text-white">
+                vaani
+              </span>
+            </div>
 
-            <div className="flex-1 lg:hidden" />
-
-            {/* Right side Actions */}
-            <div className="flex justify-end gap-4 lg:gap-6 items-center">
+            {/* Left side stream status pill */}
+            <div className="hidden lg:block">
               <StreamStatusPill status={streamStatus} />
+            </div>
 
-              <div className="flex items-center gap-3 bg-white/50 pl-3 pr-2 py-2 rounded-[16px] border border-white shadow-sm hover:bg-white transition-colors cursor-pointer">
-                 <div className="hidden lg:block text-right pr-2">
-                   <p className="text-[12px] font-dm-sans font-bold text-gray-800 uppercase">{user?.firstName || "User"}</p>
-                 </div>
-                 <UserButton
+            {/* Right side user avatar pill */}
+            <div className="flex items-center gap-4">
+              <div className="lg:hidden">
+                <StreamStatusPill status={streamStatus} />
+              </div>
+              <div className="flex items-center gap-3 liquid-glass px-3.5 py-1.5 rounded-full border border-white/10">
+                <span className="hidden sm:inline text-xs font-semibold tracking-wider text-neutral-200 uppercase">
+                  {user?.firstName || "CHIRAG"}
+                </span>
+                <UserButton
                   appearance={{
                     elements: {
-                      avatarBox: "w-8 h-8 rounded-[10px] shadow-sm",
+                      avatarBox:
+                        "w-7 h-7 rounded-full border border-white/20",
                     },
                   }}
                 />
@@ -281,96 +330,99 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* Page Content Scrollable Area */}
-          <main className="flex-1 overflow-y-auto px-4 md:px-6 lg:px-10 pb-20 lg:pb-10 minimal-scrollbar">
-               {children}
+          <main className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-10 py-6 lg:py-8 minimal-scrollbar">
+            <PageTransition>{children}</PageTransition>
           </main>
         </div>
       </div>
-      
-      {/* ── Mobile Menu Overlay ── */}
+
+      {/* Mobile Menu Overlay */}
       {mobileOpen && (
-        <div className="lg:hidden absolute inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={() => setMobileOpen(false)}>
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        >
           <div
-            className="absolute top-[80px] left-4 right-4 bg-white/95 backdrop-blur-xl rounded-[24px] shadow-[0_24px_60px_rgba(0,0,0,0.12)] border border-white p-4 animate-[fade-slide-down_200ms_ease-out]"
+            className="absolute top-20 left-4 right-4 liquid-glass bg-black/95 rounded-2xl border border-white/10 p-5 space-y-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <nav className="space-y-1">
+            <nav className="space-y-2">
               {navItems.map((item) => {
-                const isActive = pathname.startsWith(item.href);
+                const isActive = pathname?.startsWith(item.href) ?? false;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-[14px] text-[15px] font-medium transition-all ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
                       isActive
-                        ? "bg-[#FFF2E5] text-[#F5821F]"
-                        : "text-gray-600 hover:bg-gray-50"
+                        ? "liquid-glass text-white border border-white/20"
+                        : "text-neutral-400 hover:text-white hover:bg-white/5"
                     }`}
                   >
-                    <item.icon className="w-5 h-5" />
+                    <item.icon className="w-5 h-5" strokeWidth={1.6} />
                     {item.label}
                   </Link>
                 );
               })}
-              <div className="pt-2 mt-2 border-t border-gray-100">
+              <div className="pt-2 border-t border-white/10">
                 <Link
                   href="/settings"
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-[14px] text-[15px] font-medium transition-all ${
-                    pathname.startsWith("/settings")
-                      ? "bg-[#FFF2E5] text-[#F5821F]"
-                      : "text-gray-600 hover:bg-gray-50"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                    pathname?.startsWith("/settings") ?? false
+                      ? "liquid-glass text-white border border-white/20"
+                      : "text-neutral-400 hover:text-white hover:bg-white/5"
                   }`}
                 >
-                  <Settings className="w-5 h-5" />
+                  <Settings className="w-5 h-5" strokeWidth={1.6} />
                   Settings
                 </Link>
               </div>
             </nav>
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <div className="flex items-center gap-3 px-4 py-2">
-                <UserButton
-                  appearance={{
-                    elements: { avatarBox: "w-8 h-8 rounded-[10px]" },
-                  }}
-                />
-                <span className="text-[13px] font-medium text-gray-700">{user?.firstName || "User"}</span>
-              </div>
-            </div>
           </div>
         </div>
       )}
 
-      {/* ── Mobile Tab Bar (Floating Pill) ── */}
-      <div className="lg:hidden fixed bottom-6 inset-x-6 h-[72px] glass-modal z-[60] flex items-center justify-around px-2">
-        <Link href="/dashboard" className={`p-3 rounded-[16px] transition-all ${pathname === '/dashboard' ? 'bg-[#FFF2E5] text-[#F5821F]' : 'text-gray-400'}`}>
-          <LayoutDashboard className="w-[22px] h-[22px]" />
-        </Link>
-        <Link href="/channels" className={`p-3 rounded-[16px] transition-all ${pathname === '/channels' ? 'bg-[#FFF2E5] text-[#F5821F]' : 'text-gray-400'}`}>
-          <Radio className="w-[22px] h-[22px]" />
-        </Link>
-
-        {/* Preflight Center Action */}
-        <button 
-          onClick={() => setShowPreflight(true)}
-          className="relative transform -translate-y-6 w-[56px] h-[56px] rounded-[20px] shadow-[0_12px_24px_rgba(245,130,31,0.35)] flex items-center justify-center text-white bg-gradient-to-br from-[#F5821F] to-[#E8690A] hover:scale-105 transition-transform"
+      {/* Mobile Bottom Tab Bar */}
+      <div className="lg:hidden fixed bottom-4 inset-x-4 h-16 liquid-glass rounded-full border border-white/10 z-40 flex items-center justify-around px-3 bg-black/80 backdrop-blur-xl">
+        <Link
+          href="/dashboard"
+          className={`p-2.5 rounded-full transition-colors ${
+            pathname === "/dashboard"
+              ? "bg-white text-black"
+              : "text-neutral-400 hover:text-white"
+          }`}
         >
-           <Radio className="w-[24px] h-[24px] fill-current" />
-        </button>
-
-        <Link href="/settings" className={`p-3 rounded-[16px] transition-all ${pathname === '/settings' ? 'bg-[#FFF2E5] text-[#F5821F]' : 'text-gray-400'}`}>
-          <Settings className="w-[22px] h-[22px]" />
+          <LayoutDashboard className="w-5 h-5" strokeWidth={1.6} />
         </Link>
-        <UserButton
-           appearance={{
-             elements: {
-               avatarBox: "w-[30px] h-[30px] rounded-[10px]",
-             },
-           }}
-        />
+        <Link
+          href="/channels"
+          className={`p-2.5 rounded-full transition-colors ${
+            pathname === "/channels"
+              ? "bg-white text-black"
+              : "text-neutral-400 hover:text-white"
+          }`}
+        >
+          <Radio className="w-5 h-5" strokeWidth={1.6} />
+        </Link>
+        <button
+          onClick={() => setShowPreflight(true)}
+          className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+        >
+          <Radio className="w-5 h-5" strokeWidth={1.8} />
+        </button>
+        <Link
+          href="/settings"
+          className={`p-2.5 rounded-full transition-colors ${
+            pathname === "/settings"
+              ? "bg-white text-black"
+              : "text-neutral-400 hover:text-white"
+          }`}
+        >
+          <Settings className="w-5 h-5" strokeWidth={1.6} />
+        </Link>
       </div>
-
     </div>
   );
 }

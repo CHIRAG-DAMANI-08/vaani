@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { Resend } from "resend";
 import { logger } from "@/lib/logger";
 import { connectToDatabase } from "@/lib/mongodb";
 import { WaitlistEntry } from "@/lib/models/waitlist-entry";
@@ -14,6 +15,10 @@ const schema = z.object({
   referrer: z.string().trim().max(300).optional(),
   feature_interest: z.string().trim().max(100).optional(),
 });
+
+const resendApiKey = process.env.RESEND_API_KEY;
+const resendFrom = process.env.RESEND_FROM_EMAIL ?? "Vaani <onboarding@resend.dev>";
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 export type WaitlistResponse =
   | { ok: true; state: "success"; message: "You're on the waitlist." }
@@ -66,6 +71,30 @@ export async function joinWaitlist(
       ...parsed.data,
       status: "pending",
     });
+
+    if (resend) {
+      const displayName = parsed.data.name ?? "there";
+
+      try {
+        await resend.emails.send({
+          from: resendFrom,
+          to: parsed.data.email,
+          subject: "You're on the Vaani waitlist",
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111; max-width: 560px; margin: 0 auto; padding: 24px;">
+              <h1 style="font-size: 24px; margin: 0 0 16px;">You're on the Vaani waitlist</h1>
+              <p style="margin: 0 0 16px;">Hi ${displayName},</p>
+              <p style="margin: 0 0 16px;">Thanks for joining the beta. We’ve saved your spot and will email you when Vaani opens up for more creators.</p>
+              <p style="margin: 0;">If you have any questions, just reply to this message.</p>
+            </div>
+          `,
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Waitlist confirmation email failed");
+      }
+    } else {
+      logger.warn("RESEND_API_KEY is not configured; waitlist email was not sent");
+    }
 
     return {
       ok: true,

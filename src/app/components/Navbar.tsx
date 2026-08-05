@@ -1,21 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { useAuth, UserButton } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
-
-/* Brand SVG icons — lucide-react no longer ships brand marks */
-const InstagramIcon = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
-);
-const LinkedinIcon = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect x="2" y="9" width="4" height="12" /><circle cx="4" cy="4" r="2" /></svg>
-);
-const TwitterIcon = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" /></svg>
-);
 import { Logo } from "./Logo";
 
 const navLinks = [
@@ -25,80 +14,81 @@ const navLinks = [
   { label: "Use Cases", href: "#use-cases" },
 ];
 
-const socials = [
-  { Icon: InstagramIcon, label: "instagram", href: "#" },
-  { Icon: LinkedinIcon, label: "linkedin", href: "#" },
-  { Icon: TwitterIcon, label: "twitter", href: "#" },
-];
+const MotionLink = motion(Link);
+
+const authButtonBase =
+  "inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm transition-all duration-200";
+const primaryAuthButton = `${authButtonBase} bg-foreground text-background font-semibold`;
+const secondaryAuthButton = `${authButtonBase} liquid-glass text-foreground`;
 
 export const Navbar = () => {
+  const { isLoaded, isSignedIn } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const authButtons = mounted ? (
+  const signedOutAuthButtons = (
     <>
-      <Show when="signed-out">
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            window.dispatchEvent(new Event("open-waitlist"));
-          }}
-          className="px-5 py-2.5 text-sm font-medium text-[var(--landing-bg)] bg-[var(--landing-fg)] rounded-full hover:bg-white/90 active:scale-95 transition-all duration-200"
+      <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+        <MotionLink
+          href="/sign-in"
+          data-testid="navbar-signin"
+          className={secondaryAuthButton}
+          onClick={() => setMobileOpen(false)}
         >
-          Join beta
-        </button>
-        <SignInButton>
-          <button className="px-5 py-2.5 text-sm font-medium text-[var(--landing-fg)] border border-[var(--landing-fg)]/20 rounded-full hover:border-[var(--landing-fg)]/40 active:scale-95 transition-all duration-200">
-            Sign in
-          </button>
-        </SignInButton>
-      </Show>
-      <Show when="signed-in">
-        <Link
-          href="/dashboard"
-          className="px-5 py-2.5 text-sm font-medium text-[var(--landing-bg)] bg-[var(--landing-fg)] rounded-full hover:bg-white/90 active:scale-95 transition-all duration-200"
+          Sign in
+        </MotionLink>
+      </motion.div>
+      <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+        <MotionLink
+          href="/sign-up"
+          data-testid="navbar-signup"
+          className={primaryAuthButton}
+          onClick={() => setMobileOpen(false)}
         >
-          Dashboard
-        </Link>
-        <UserButton />
-      </Show>
+          Sign up
+        </MotionLink>
+      </motion.div>
     </>
-  ) : null;
+  );
 
-  const mobileAuthButtons = mounted ? (
+  const signedInAuthButtons = (
     <>
-      <Show when="signed-out">
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            setMobileOpen(false);
-            window.dispatchEvent(new Event("open-waitlist"));
-          }}
-          className="px-5 py-3 text-sm font-medium text-[var(--landing-bg)] bg-[var(--landing-fg)] rounded-full text-center"
-        >
-          Join beta
-        </button>
-        <SignInButton>
-          <button className="px-5 py-3 text-sm font-medium text-[var(--landing-fg)] border border-[var(--landing-fg)]/20 rounded-full text-center">
-            Sign in
-          </button>
-        </SignInButton>
-      </Show>
-      <Show when="signed-in">
-        <Link
+      <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+        <MotionLink
           href="/dashboard"
-          className="px-5 py-3 text-sm font-medium text-[var(--landing-bg)] bg-[var(--landing-fg)] rounded-full text-center"
+          data-testid="navbar-dashboard"
+          className={primaryAuthButton}
           onClick={() => setMobileOpen(false)}
         >
           Dashboard
-        </Link>
-      </Show>
+        </MotionLink>
+      </motion.div>
+      <UserButton />
     </>
-  ) : null;
+  );
+
+  if (!isLoaded) {
+    return (
+      <motion.nav
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+        className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12 lg:px-24 py-4 bg-[var(--landing-bg)]/80 backdrop-blur-md border-b border-[var(--landing-border)]"
+        data-testid="navbar"
+      >
+        <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
+          <a
+            href="#home"
+            className="flex items-center gap-2.5"
+            data-testid="logo-link"
+          >
+            <Logo />
+            <span className="text-lg font-semibold tracking-tight text-[var(--landing-fg)]">
+              vaani
+            </span>
+          </a>
+        </div>
+      </motion.nav>
+    );
+  }
 
   return (
     <motion.nav
@@ -109,7 +99,7 @@ export const Navbar = () => {
       data-testid="navbar"
     >
       <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
-        {/* Left: Logo + Socials */}
+        {/* Left: Logo */}
         <div className="flex items-center gap-8 shrink-0">
           <a
             href="#home"
@@ -121,19 +111,6 @@ export const Navbar = () => {
               vaani
             </span>
           </a>
-
-          <div className="hidden lg:flex items-center gap-4">
-            {socials.map(({ Icon, label, href }) => (
-              <a
-                key={label}
-                href={href}
-                aria-label={label}
-                className="text-[var(--landing-fg)]/40 hover:text-[var(--landing-fg)] transition-colors duration-200"
-              >
-                <Icon className="w-4 h-4" />
-              </a>
-            ))}
-          </div>
         </div>
 
         {/* Center: Nav Links (desktop) */}
@@ -150,7 +127,9 @@ export const Navbar = () => {
         </div>
 
         {/* Right: Auth Buttons (desktop) */}
-        <div className="hidden md:flex items-center gap-3 shrink-0">{authButtons}</div>
+        <div className="hidden md:flex items-center gap-3 shrink-0">
+          {!isSignedIn ? signedOutAuthButtons : signedInAuthButtons}
+        </div>
 
         {/* Mobile Menu Toggle */}
         <button
@@ -185,7 +164,13 @@ export const Navbar = () => {
                 </a>
               ))}
               <div className="flex flex-col gap-2 mt-3">
-                {mobileAuthButtons}
+                {!isSignedIn ? (
+                  <div className="flex flex-col gap-2">{signedOutAuthButtons}</div>
+                ) : (
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {signedInAuthButtons}
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>

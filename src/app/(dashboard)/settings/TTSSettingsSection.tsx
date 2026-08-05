@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Mic } from "lucide-react";
+import { GlassCard } from "@/app/components/GlassCard";
 
 const SPEAKERS = [
   { value: "shubh", label: "Shubh — Male (Default)" },
@@ -38,7 +39,6 @@ export function TTSSettingsSection() {
   const [pace, setPace] = useState(1.0);
   const [sourceLang, setSourceLang] = useState("auto");
 
-  // Load from localStorage on mount
   useEffect(() => {
     const savedSpeaker = localStorage.getItem("vaani_tts_speaker");
     const savedPace = localStorage.getItem("vaani_tts_pace");
@@ -52,14 +52,12 @@ export function TTSSettingsSection() {
     localStorage.setItem("vaani_tts_speaker", newSpeaker);
     localStorage.setItem("vaani_tts_pace", String(newPace));
     localStorage.setItem("vaani_source_lang", newSourceLang);
-    // Best-effort sync to server
     try {
       import("@/lib/obs-relay-client").then((mod) => {
         const mgr = mod.obsRelayManager as any;
         if (typeof mgr.setTTSSettings === "function") {
           mgr.setTTSSettings({ speaker: newSpeaker, pace: newPace, sourceLang: newSourceLang });
         } else {
-          // Fallback: send raw message via relay
           const ws = mgr.relayWs;
           if (ws?.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({
@@ -95,91 +93,52 @@ export function TTSSettingsSection() {
   };
 
   const selectClass =
-    "w-full text-[14px] font-dm-sans bg-gray-50/80 border border-gray-100 rounded-[12px] px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]/20 transition-all hover:bg-white";
+    "w-full text-xs font-sans bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2.5 text-white outline-none focus:border-white/30 transition-all cursor-pointer";
 
   return (
-    <section className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-[24px] overflow-hidden mb-6 relative group">
-      <div className="p-6 md:p-8">
-        <div className="flex items-start justify-between mb-8">
+    <GlassCard className="flex flex-col h-full">
+      {/* Header */}
+      <div className="p-6 pb-4 border-b border-white/10">
+        <div className="flex items-center gap-3.5">
+          <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white shrink-0">
+            <Mic className="w-4 h-4" strokeWidth={1.6} />
+          </div>
           <div>
-            <div className="w-10 h-10 rounded-[12px] bg-[#8B5CF6]/10 flex items-center justify-center mb-4">
-              <Mic className="w-5 h-5 text-[#8B5CF6]" />
-            </div>
-            <h2 className="text-[20px] font-syne font-bold text-gray-900 mb-2">
-              Voice &amp; Language
-            </h2>
-            <p className="text-[14px] font-dm-sans text-gray-500 max-w-xl">
-              Configure TTS voice, speed, and source language detection.
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-6 max-w-2xl">
-          {/* TTS Speaker */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center">
-            <div>
-              <p className="text-[13px] font-dm-sans font-bold text-gray-700 mb-1">TTS Voice</p>
-              <p className="text-[11px] text-gray-400 leading-snug">Speaker voice for translated audio.</p>
-            </div>
-            <div className="md:col-span-2">
-              <select value={speaker} onChange={handleSpeakerChange} className={selectClass}>
-                {SPEAKERS.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="h-px bg-gray-100 w-full" />
-
-          {/* Pace */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-start">
-            <div>
-              <p className="text-[13px] font-dm-sans font-bold text-gray-700 mb-1">
-                Speaking Pace
-              </p>
-              <p className="text-[11px] text-gray-400 leading-snug">
-                {formatPaceLabel(pace)}
-              </p>
-            </div>
-            <div className="md:col-span-2">
-              <input
-                type="range"
-                min={0.5}
-                max={2.0}
-                step={0.1}
-                value={pace}
-                onChange={handlePaceChange}
-                className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-[#F5821F]"
-              />
-              <div className="flex justify-between text-[10px] text-gray-400 mt-1 px-0.5">
-                <span>0.5× Slow</span>
-                <span>1.0× Normal</span>
-                <span>2.0× Fast</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="h-px bg-gray-100 w-full" />
-
-          {/* Source Language */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center">
-            <div>
-              <p className="text-[13px] font-dm-sans font-bold text-gray-700 mb-1">Source Language</p>
-              <p className="text-[11px] text-gray-400 leading-snug">
-                Lock input language for bilingual streams.
-              </p>
-            </div>
-            <div className="md:col-span-2">
-              <select value={sourceLang} onChange={handleSourceLangChange} className={selectClass}>
-                {SOURCE_LANGUAGES.map((l) => (
-                  <option key={l.value} value={l.value}>{l.label}</option>
-                ))}
-              </select>
-            </div>
+            <h2 className="text-base font-sans font-bold text-white tracking-tight">Voice &amp; Language</h2>
+            <p className="text-xs font-sans text-neutral-400 mt-0.5">Configure TTS voice speaker, speed, and language detection.</p>
           </div>
         </div>
       </div>
-    </section>
+
+      <div className="p-6 space-y-4">
+        {/* TTS Voice Row */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-sans font-semibold text-neutral-400 uppercase tracking-wider block">
+            TTS Voice Speaker
+          </label>
+          <select value={speaker} onChange={handleSpeakerChange} className={selectClass}>
+            {SPEAKERS.map((s) => (
+              <option key={s.value} value={s.value} className="bg-neutral-900 text-white">{s.label}</option>
+            ))}
+          </select>
+        </div>
+
+
+
+        <div className="h-px bg-white/10" />
+
+        {/* Source Language Row */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-sans font-semibold text-neutral-400 uppercase tracking-wider block">
+            Source Language Lock
+          </label>
+          <select value={sourceLang} onChange={handleSourceLangChange} className={selectClass}>
+            {SOURCE_LANGUAGES.map((l) => (
+              <option key={l.value} value={l.value} className="bg-neutral-900 text-white">{l.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </GlassCard>
   );
 }

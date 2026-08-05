@@ -1,6 +1,6 @@
 "use client";
 
-import { useSignIn, useAuth } from "@clerk/nextjs";
+import { useSignIn, useAuth, useClerk } from "@clerk/nextjs";
 import { logger } from "@/lib/logger";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -13,14 +13,43 @@ export default function SignInPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [verifyCode, setVerifyCode] = useState(false);
+  const [emailCodeSent, setEmailCodeSent] = useState(false);
+  const [emailForCode, setEmailForCode] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [oauthError, setOauthError] = useState("");
+  const passwordEnabled =
+    !!signIn?.supportedFirstFactors?.some(
+      (factor) => factor.strategy === "password"
+    );
+  const emailCodeEnabled =
+    !!signIn?.supportedFirstFactors?.some(
+      (factor) => factor.strategy === "email_code"
+    );
 
   const isLoading = fetchStatus === "fetching" || !isLoaded;
 
   const handleSubmit = async (formData: FormData) => {
     const emailAddress = formData.get("email") as string;
     const password = formData.get("password") as string;
+
+    if (!passwordEnabled) {
+      if (!emailCodeEnabled) {
+        setOauthError("Password sign-in is not enabled for this Clerk instance.");
+        return;
+      }
+
+      const { error } = await signIn.emailCode.sendCode({ emailAddress });
+
+      if (error) {
+        logger.error({ err: error }, "Email code sign-in failed");
+        setOauthError("Failed to send a sign-in code. Please try again.");
+        return;
+      }
+
+      setEmailForCode(emailAddress);
+      setEmailCodeSent(true);
+      return;
+    }
 
     const { error } = await signIn.password({ emailAddress, password });
 
@@ -31,11 +60,7 @@ export default function SignInPage() {
 
     if (signIn.status === "complete") {
       await signIn.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            // debug probe removed;
-            return;
-          }
+        navigate: ({ decorateUrl }) => {
           const url = decorateUrl("/dashboard");
           if (url.startsWith("http")) {
             window.location.href = url;
@@ -57,15 +82,36 @@ export default function SignInPage() {
 
   const handleVerify = async (formData: FormData) => {
     const code = formData.get("code") as string;
+
+    if (emailCodeSent) {
+      const { error } = await signIn.emailCode.verifyCode({ code });
+
+      if (error) {
+        logger.error({ err: error }, "Email code verification failed");
+        return;
+      }
+
+      if (signIn.status === "complete") {
+        await signIn.finalize({
+          navigate: ({ decorateUrl }) => {
+            const url = decorateUrl("/dashboard");
+            if (url.startsWith("http")) {
+              window.location.href = url;
+            } else {
+              router.push(url);
+            }
+          },
+        });
+      }
+
+      return;
+    }
+
     await signIn.mfa.verifyEmailCode({ code });
 
     if (signIn.status === "complete") {
       await signIn.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            // debug probe removed;
-            return;
-          }
+        navigate: ({ decorateUrl }) => {
           const url = decorateUrl("/dashboard");
           if (url.startsWith("http")) {
             window.location.href = url;
@@ -82,14 +128,18 @@ export default function SignInPage() {
     setGoogleLoading(true);
     setOauthError("");
     try {
-      const { error } = await signIn.sso({
-        strategy: "oauth_google",
-        redirectUrl: "/dashboard",
-        redirectCallbackUrl: "/sso-callback",
-      });
-      if (error) {
-        logger.error({ err: error }, "Google OAuth error");
-        setOauthError("Failed to start Google sign in. Please try again.");
+      if ("authenticateWithRedirect" in signIn && typeof (signIn as any).authenticateWithRedirect === "function") {
+        await (signIn as any).authenticateWithRedirect({
+          strategy: "oauth_google",
+          redirectUrl: "/sso-callback",
+          redirectUrlComplete: "/dashboard",
+        });
+      } else {
+        await signIn.sso({
+          strategy: "oauth_google",
+          redirectUrl: "/dashboard",
+          redirectCallbackUrl: "/sso-callback",
+        });
       }
     } catch (err) {
       logger.error({ err }, "Google OAuth exception");
@@ -100,7 +150,7 @@ export default function SignInPage() {
   };
 
   /* ── Verification code view ── */
-  if (verifyCode || signIn?.status === "needs_client_trust") {
+  if (verifyCode || emailCodeSent || signIn?.status === "needs_client_trust") {
     return (
       <div className="space-y-6">
         <div className="space-y-2">
@@ -111,7 +161,9 @@ export default function SignInPage() {
             Verify your account
           </h1>
           <p className="text-[14px] text-black/50">
-            We sent a verification code to your email.
+            {emailCodeSent
+              ? `We sent a sign-in code to ${emailForCode}.`
+              : "We sent a verification code to your email."}
           </p>
         </div>
 
@@ -143,12 +195,26 @@ export default function SignInPage() {
           </button>
         </form>
 
-        <button
-          onClick={() => signIn.mfa.sendEmailCode()}
-          className="text-[13px] text-black/40 hover:text-black/60 transition-colors"
-        >
-          I need a new code
-        </button>
+        {emailCodeSent ? (
+          <button
+            onClick={async () => {
+              const { error } = await signIn.emailCode.sendCode({ emailAddress: emailForCode });
+              if (error) {
+                logger.error({ err: error }, "Resend sign-in code failed");
+              }
+            }}
+            className="text-[13px] text-black/40 hover:text-black/60 transition-colors"
+          >
+            Resend sign-in code
+          </button>
+        ) : (
+          <button
+            onClick={() => signIn.mfa.sendEmailCode()}
+            className="text-[13px] text-black/40 hover:text-black/60 transition-colors"
+          >
+            I need a new code
+          </button>
+        )}
       </div>
     );
   }
@@ -218,37 +284,42 @@ export default function SignInPage() {
           />
         </div>
 
-        {/* Password */}
-        <div className="space-y-1.5">
-          <div className="relative">
-            <input
-              id="password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              autoComplete="current-password"
-              required
-              className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 pr-11 text-[14px] text-black outline-none placeholder:text-black/30 focus:border-black/25 focus:ring-2 focus:ring-black/5 transition-all"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-black/30 hover:text-black/50 transition-colors"
-              tabIndex={-1}
-            >
-              {showPassword ? (
-                <EyeOff className="w-4 h-4" />
-              ) : (
-                <Eye className="w-4 h-4" />
-              )}
-            </button>
+        {passwordEnabled ? (
+          <div className="space-y-1.5">
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                autoComplete="current-password"
+                required
+                className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 pr-11 text-[14px] text-black outline-none placeholder:text-black/30 focus:border-black/25 focus:ring-2 focus:ring-black/5 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-black/30 hover:text-black/50 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+            {errors?.fields?.password && (
+              <p className="text-[12px] text-red-500 pl-1">
+                {errors.fields.password.message}
+              </p>
+            )}
           </div>
-          {errors?.fields?.password && (
-            <p className="text-[12px] text-red-500 pl-1">
-              {errors.fields.password.message}
-            </p>
-          )}
-        </div>
+        ) : (
+          <p className="text-[12px] text-black/40">
+            Password sign-in is not enabled here. We will email you a login code instead.
+          </p>
+        )}
 
         {/* Continue button */}
         <button
@@ -257,7 +328,7 @@ export default function SignInPage() {
           className="w-full rounded-xl bg-[#f0f0f0] hover:bg-[#e4e4e4] active:scale-[0.98] text-black font-medium py-3 text-[14px] transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-          Continue
+          {passwordEnabled ? "Continue" : "Send code"}
         </button>
       </form>
 

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+// Updated module imports
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/lib/models/user";
-import { translateText, textToSpeech, LANG_MAP } from "@/lib/sarvam-pipeline";
+import { translateText, textToSpeech } from "@/lib/sarvam-pipeline";
+import { LANGUAGE_REGISTRY, LANG_MAP } from "@/lib/language-registry";
 import { decryptKey } from "@/lib/encryption";
 import { validateCSRF } from "@/lib/csrf";
 
@@ -14,7 +16,7 @@ import { validateCSRF } from "@/lib/csrf";
  * Does NOT require OBS or a live stream — pure pipeline test.
  *
  * Body: { text, targetLanguages, speaker?, pace? }
- * Response: { results: [{ languageId, translatedText, audioBase64 }], timings }
+ * Response: { results: [{ languageId, translatedText, audioBase64, speaker }], timings }
  */
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -88,6 +90,12 @@ export async function POST(req: Request) {
       .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
       .map((r) => r.value);
 
+    if (successfulTranslations.length === 0) {
+      const firstError = translateResults.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+      logger.error({ err: firstError?.reason }, "All translation requests failed");
+      return NextResponse.json({ error: "TRANSLATION_FAILED" }, { status: 500 });
+    }
+
     const ttsStart = Date.now();
 
     // TTS for all successful translations in parallel
@@ -97,7 +105,7 @@ export async function POST(req: Request) {
           speaker,
           pace: clampedPace,
         });
-        return { langId, translatedText, audioBase64: tts.audioBase64 };
+        return { langId, translatedText, audioBase64: tts.audioBase64, speaker };
       })
     );
 
@@ -107,6 +115,12 @@ export async function POST(req: Request) {
     const results = ttsResults
       .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
       .map((r) => r.value);
+
+    if (results.length === 0) {
+      const firstTTSError = ttsResults.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+      logger.error({ err: firstTTSError?.reason }, "All TTS requests failed");
+      return NextResponse.json({ error: "TTS_FAILED" }, { status: 500 });
+    }
 
     return NextResponse.json({
       results,
