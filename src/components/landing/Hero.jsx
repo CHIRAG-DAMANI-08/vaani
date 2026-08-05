@@ -63,11 +63,12 @@ export const Hero = () => {
 
       <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-background to-transparent z-[1]" />
 
-      <div
+      <motion.div
+        style={{ y: contentY, opacity: contentOpacity }}
         className="relative z-10 flex flex-col items-center text-center px-6 pt-28 md:pt-32 pb-32 max-w-5xl mx-auto min-h-screen justify-center"
       >
 
-        <motion.div style={{ y: contentY, opacity: contentOpacity }}>
+        <div>
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-medium tracking-[-2px] leading-[0.95]">
             <span className="line-mask">
               <motion.span
@@ -92,14 +93,14 @@ export const Hero = () => {
               </motion.span>
             </span>
           </h1>
-        </motion.div>
+        </div>
 
         <motion.p
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.8 }}
           className="text-lg mt-8 max-w-xl"
-          style={{ y: contentY, opacity: contentOpacity, color: "hsl(var(--hero-subtitle))" }}
+          style={{ color: "hsl(var(--hero-subtitle))" }}
           data-testid="hero-subtitle"
         >
           vaani translates your live broadcast in real time — voice to voice — so
@@ -112,7 +113,6 @@ export const Hero = () => {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.95 }}
-          style={{ y: contentY, opacity: contentOpacity }}
           className="liquid-glass rounded-full p-2 max-w-lg w-full mt-10 flex items-center gap-2"
           data-testid="hero-subscribe-form"
         >
@@ -140,7 +140,6 @@ export const Hero = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1.2 }}
           className="flex items-center gap-3 mt-6"
-          style={{ y: contentY, opacity: contentOpacity }}
         >
           <div className="flex -space-x-2">
             {avatars.map((src, i) => (
@@ -154,7 +153,7 @@ export const Hero = () => {
           </div>
           <span className="text-xs text-white/50">2,400+ streamers on the waitlist</span>
         </motion.div>
-      </div>
+      </motion.div>
     </section>
   );
 };
