@@ -52,3 +52,6 @@ next-env.d.ts
 .claude-flow/
 .claude/proven-config.json
 .claude/.proven-config-version
+
+# Personal Claude context (local only — syncs with Obsidian vault)
+CLAUDE.local.md
