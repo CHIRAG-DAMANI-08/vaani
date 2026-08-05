@@ -53,22 +53,28 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VOICE-01 | TBD | Pending |
-| VOICE-02 | TBD | Pending |
-| VOICE-03 | TBD | Pending |
-| VOICE-04 | TBD | Pending |
-| VOICE-05 | TBD | Pending |
-| LAT-01 | TBD | Pending |
-| LAT-02 | TBD | Pending |
-| LAT-03 | TBD | Pending |
-| ROUTE-01 | TBD | Pending |
-| ROUTE-02 | TBD | Pending |
+| VOICE-01 | Phase 19 | Pending |
+| VOICE-02 | Phase 19 | Pending |
+| VOICE-03 | Phase 19 | Pending |
+| VOICE-04 | Phase 19 | Pending |
+| VOICE-05 | Phase 19 | Pending |
+| LAT-01 | Phase 20 | Pending |
+| LAT-02 | Phase 20 | Pending |
+| LAT-03 | Phase 20 | Pending |
+| ROUTE-01 | Phase 18 | Pending |
+| ROUTE-02 | Phase 18 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 10 total
-- Mapped to phases: 0
-- Unmapped: 10 ⚠️ (filled by roadmap)
+- Mapped to phases: 10
+- Unmapped: 0 ✓
+
+**Phase mapping notes:**
+- ROUTE-01, ROUTE-02 → Phase 18 (per-channel audio routing, prerequisite)
+- VOICE-01..05 → Phase 19 (per-channel voice & pace)
+- LAT-01..03 → Phase 20 (latency mode)
+- Phase 17 is a de-risking spike with no requirement of its own; it gates the routing build and validates the speaker/model facts Phases 19-20 depend on.
 
 ---
 *Requirements defined: 2026-08-05*
-*Last updated: 2026-08-05 after milestone v1.2 definition*
+*Last updated: 2026-08-05 after milestone v1.2 roadmap*
