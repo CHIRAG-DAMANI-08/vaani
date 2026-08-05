@@ -16,5 +16,13 @@ Vaani is a high-performance audio translation and streaming platform. It allows 
 - **Integrations**: Sarvam AI (saarika:v2.5, bulbul:v3), OBS WebSocket v5.
 
 ## Status
-- **Phase 1-5**: Completed (Foundation, Auth, Keys, OBS Connection, AI Pipeline).
-- **Phase 6**: RTMP Output Streaming (Current Focus).
+- **Phase 1-15**: Completed (Foundation → Language Expansion).
+- **Phase 16**: Deployment & Infrastructure (in progress).
+
+## Current Milestone: v1.2 — Per-Language Voice & Pace
+
+**Goal:** Let each language channel speak with its own voice and pace, and let streamers choose their latency/quality tradeoff.
+
+**Target features:**
+- Per-language voice + pace per channel (global TTS settings remain the default)
+- Latency vs. quality mode (Snappy / Balanced / Studio chunk sizing)

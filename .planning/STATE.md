@@ -1,8 +1,8 @@
 # Project State
 
 ## Current Position
-- **Current Phase**: Phase 07: Optimization & Polish — **COMPLETE**
-- **Last Action**: Executed 07-01-PLAN.md — all 3 waves complete.
+- **Current Phase**: v1.2 — Per-Language Voice & Pace (defining requirements)
+- **Last Action**: Milestone v1.2 started 2026-08-05.
 
 ## Recent Progress
 - **Phase 07**: Binary WebSocket transport, FFmpeg low-latency, latency monitor, Sonner toasts, shimmer animations.
