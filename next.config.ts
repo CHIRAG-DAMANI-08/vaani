@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const isDev = process.env.NODE_ENV !== "production";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: process.cwd(),
+  },
   async headers() {
     // In development, use a relaxed CSP to avoid blocking HMR, Clerk, etc.
     // In production, use a strict CSP.
@@ -11,10 +14,10 @@ const nextConfig: NextConfig = {
           "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
           "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
           "connect-src 'self' https: ws: wss:",
-          "style-src 'self' 'unsafe-inline'",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           "img-src 'self' data: blob: https:",
           "font-src 'self' https: data:",
-          "media-src 'self' blob:",
+          "media-src 'self' blob: data: https://d8j0ntlcm91z4.cloudfront.net",
           "worker-src 'self' blob:",
           "frame-src https:",
         ].join("; ")
@@ -25,7 +28,7 @@ const nextConfig: NextConfig = {
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           "img-src 'self' data: blob: https://img.clerk.com https://*.clerk.accounts.dev",
           "font-src 'self' https://fonts.gstatic.com",
-          "media-src 'self' blob:",
+          "media-src 'self' blob: data: https://d8j0ntlcm91z4.cloudfront.net",
           "worker-src 'self' blob:",
           "frame-src https://*.clerk.accounts.dev https://*.clerk.com",
         ].join("; ");

@@ -47,3 +47,8 @@ next-env.d.ts
 .dolt/
 *.db
 .beads-credential-key
+
+# Claude tool state (generated, not tracked)
+.claude-flow/
+.claude/proven-config.json
+.claude/.proven-config-version
