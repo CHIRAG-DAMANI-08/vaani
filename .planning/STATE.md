@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v1.2
+milestone_name: Per-Language Voice & Pace + Latency Mode
+status: planning
+stopped_at: Phase 17 context gathered
+last_updated: "2026-08-05T11:13:35.647Z"
+last_activity: 2026-08-05 — Created v1.2 roadmap (phases 17-20), updated REQUIREMENTS.md traceability
+progress:
+  total_phases: 21
+  completed_phases: 0
+  total_plans: 7
+  completed_plans: 0
+  percent: 0
+---
+
 # Project State
 
 ## Project Reference
@@ -57,6 +73,6 @@ None (tracked via `bd` — run `bd ready` for available work).
 
 ## Session Continuity
 
-Last session: 2026-08-05 — v1.2 requirements defined, research complete, roadmap created
-Stopped at: ROADMAP.md + STATE.md written, REQUIREMENTS.md traceability updated, commit pending
+Last session: 2026-08-05T11:13:35.644Z
+Stopped at: Phase 17 context gathered
 Resume: `/gsd:plan-phase 17` (Validation Spike) or the `/gsd:research-phase` flow for the spike
