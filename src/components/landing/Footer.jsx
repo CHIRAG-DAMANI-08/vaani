@@ -1,4 +1,8 @@
-const links = ["Privacy", "Terms", "Contact"];
+const links = [
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
+  { label: "Contact", href: "/contact" },
+];
 
 export const Footer = () => {
   return (
@@ -12,12 +16,12 @@ export const Footer = () => {
       <div className="flex items-center gap-8">
         {links.map((link) => (
           <a
-            key={link}
-            href="#"
+            key={link.label}
+            href={link.href}
             className="text-muted-foreground text-sm hover:text-foreground transition-colors duration-300"
-            data-testid={`footer-link-${link.toLowerCase()}`}
+            data-testid={`footer-link-${link.label.toLowerCase()}`}
           >
-            {link}
+            {link.label}
           </a>
         ))}
       </div>

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth, UserButton } from "@clerk/nextjs";
 import { Logo } from "./Logo";
 
@@ -16,6 +17,9 @@ const secondaryAuthButton = `${authButtonBase} liquid-glass text-foreground`;
 
 export const Navbar = () => {
   const { isLoaded, isSignedIn } = useAuth();
+  const pathname = usePathname();
+  // Section anchors live on the landing page; on any other page link back to them.
+  const anchor = (id) => (pathname === "/" ? `#${id}` : `/#${id}`);
 
   if (!isLoaded) {
     return (
@@ -29,7 +33,7 @@ export const Navbar = () => {
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
           className="flex items-center justify-between pointer-events-auto"
         >
-          <a href="#home" className="flex items-center gap-2.5" data-testid="navbar-logo">
+          <a href={anchor("home")} className="flex items-center gap-2.5" data-testid="navbar-logo">
             <Logo />
             <span className="font-bold text-foreground text-lg tracking-tight">vaani</span>
           </a>
@@ -51,7 +55,7 @@ export const Navbar = () => {
       >
         <div className="flex items-center gap-10">
           <a
-            href="#home"
+            href={anchor("home")}
             className="flex items-center gap-2.5"
             data-testid="navbar-logo"
           >
@@ -65,7 +69,7 @@ export const Navbar = () => {
             {navLinks.map((link, i) => (
               <div key={link} className="flex items-center gap-2">
                 <a
-                  href={`#${link.toLowerCase().replace(/\s+/g, "-")}`}
+                  href={anchor(link.toLowerCase().replace(/\s+/g, "-"))}
                   className="text-muted-foreground hover:text-foreground transition-colors duration-300"
                   data-testid={`nav-link-${i}`}
                 >
