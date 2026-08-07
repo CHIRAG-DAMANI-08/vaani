@@ -77,7 +77,7 @@ const activeAudioExtractors = new Map<string, ChildProcess>();
 // and Sarvam API rate limit exhaustion.
 
 type UserPipelineState = {
-  queue: Array<{ audioBase64: string; seq: number }>;
+  queue: Array<{ audioBase64: string; seq: number; captureTime: number }>;
   processing: boolean;
   nextSeq: number;
   // Cached per-session to avoid DB query every 3 seconds
@@ -158,6 +158,7 @@ async function saveSessionToDb(userId: string, sessionData: any) {
 function processAudioChunk(
   userId: string,
   audioBase64: string,
+  captureTime: number,
   ws: WebSocket | undefined
 ) {
   if (!sessionManager.isActive(userId)) return;
@@ -171,7 +172,7 @@ function processAudioChunk(
     logger.warn({ userId, droppedSeq: dropped?.seq }, "Pipeline queue full, dropped chunk");
   }
 
-  state.queue.push({ audioBase64, seq });
+  state.queue.push({ audioBase64, seq, captureTime });
 
   // If not already processing, kick off the drain loop
   if (!state.processing) {
@@ -196,7 +197,7 @@ async function drainPipelineQueue(userId: string, ws: WebSocket | undefined) {
     }
     const item = state.queue.shift()!;
     try {
-      await executeChunkPipeline(userId, item.audioBase64, item.seq, ws);
+      await executeChunkPipeline(userId, item.audioBase64, item.seq, item.captureTime, ws);
     } catch (err) {
       logger.error({ err, userId, seq: item.seq }, "Chunk pipeline failed");
       sessionManager.setError(userId, err instanceof Error ? err.message : "Pipeline failed");
@@ -247,6 +248,7 @@ async function executeChunkPipeline(
   userId: string,
   audioBase64: string,
   seq: number,
+  captureTime: number,
   ws: WebSocket | undefined
 ) {
   const chunkLogger = logger.child({ userId, seq });
@@ -310,10 +312,18 @@ async function executeChunkPipeline(
 
   // 5. Push TTS audio to RTMP streamer
   const streamer = activeStreamers.get(userId);
+
+  // Auto-tune the output delay so the voice trails the picture by a constant
+  // offset (pipeline latency + headroom) instead of landing whenever a chunk
+  // happens to finish.
+  if (streamer && result.timings?.total) {
+    streamer.setTargetDelay(result.timings.total);
+  }
+
   if (streamer?.active && result.ttsOutputs.length > 0) {
     for (const ttsOutput of result.ttsOutputs) {
       if (ttsOutput.audioBase64) {
-        streamer.pushAudio(ttsOutput.audioBase64);
+        streamer.pushAudio(ttsOutput.audioBase64, captureTime);
       }
     }
     sessionManager.updateStage(userId, "stream", "done", `${result.ttsOutputs.length} ch`);
@@ -415,11 +425,17 @@ function startAudioExtraction(userId: string) {
   // Increase chunk size to 3 seconds. 1 second is too short for Sarvam's saarika model
   // to establish context, leading to aggressive hallucination of random words.
   const CHUNK_SIZE = 32000 * 3; // 3 seconds of 16kHz 16-bit mono
+  // Capture-time cursor: chunk k was captured at start + k*3000ms, regardless of
+  // when data events flush (burst-safe). The streamer's jitter buffer holds each
+  // translation until captureTime + targetDelay so the voice trails by a constant.
+  let nextCaptureTime = Date.now();
 
   ffmpeg.stdout.on("data", (data) => {
     chunkBuffer = Buffer.concat([chunkBuffer, data]);
     while (chunkBuffer.length >= CHUNK_SIZE) {
       const chunk = chunkBuffer.subarray(0, CHUNK_SIZE);
+      const captureTime = nextCaptureTime;
+      nextCaptureTime += 3000;
       chunkBuffer = chunkBuffer.subarray(CHUNK_SIZE);
       
       // Calculate RMS and Zero-Crossing Rate to detect silence and non-speech (Voice Activity Detection)
@@ -463,7 +479,7 @@ function startAudioExtraction(userId: string) {
 
       // Convert WAV to base64 for the pipeline
       const audioBase64 = wavBuffer.toString("base64");
-      processAudioChunk(userId, audioBase64, ws);
+      processAudioChunk(userId, audioBase64, captureTime, ws);
     }
   });
 
@@ -736,7 +752,7 @@ app.prepare().then(() => {
         if (sessionManager.isActive(userId)) {
           // Convert binary Buffer to base64 for the pipeline (internal format)
           const audioBase64 = Buffer.from(rawMsg).toString("base64");
-          processAudioChunk(userId, audioBase64, ws);
+          processAudioChunk(userId, audioBase64, Date.now(), ws);
         }
         return;
       }
@@ -801,7 +817,7 @@ app.prepare().then(() => {
         } else if (msg.type === "AUDIO_CHUNK") {
           // Legacy: Base64 JSON audio chunks (backward compatibility)
           if (sessionManager.isActive(userId) && msg.audio) {
-            processAudioChunk(userId, msg.audio, ws);
+            processAudioChunk(userId, msg.audio, Date.now(), ws);
           }
 
         } else if (msg.type === "OBS_EVENT") {

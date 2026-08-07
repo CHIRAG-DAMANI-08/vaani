@@ -76,6 +76,32 @@ function stripWavHeader(wavBuffer: Buffer): Buffer {
   return wavBuffer.subarray(44);
 }
 
+// ── Jitter-buffer scheduling policy ────────────────────────────────────────
+
+export type PendingChunk<T> = T & { targetTime: number };
+
+/**
+ * Drain the head of a time-sorted pending list at `now`. Chunks whose scheduled
+ * playback time has arrived are returned as `due`; chunks that arrived more than
+ * `toleranceMs` late are dropped (counted) — playing them late is exactly what
+ * makes the translated voice lag jitter. The list must be sorted by targetTime
+ * (the serial pipeline preserves capture order). Mutates `pending` in place.
+ */
+export function drainDue<T>(
+  pending: PendingChunk<T>[],
+  now: number,
+  toleranceMs: number
+): { due: T[]; dropped: number } {
+  const due: T[] = [];
+  let dropped = 0;
+  while (pending.length > 0 && now >= pending[0].targetTime) {
+    const item = pending.shift()!;
+    if (now - item.targetTime > toleranceMs) dropped++;
+    else due.push(item);
+  }
+  return { due, dropped };
+}
+
 // ── RTMP Streamer ──────────────────────────────────────────────────────────
 
 export class RTMPStreamer extends EventEmitter {
@@ -90,6 +116,17 @@ export class RTMPStreamer extends EventEmitter {
   private maxRestartAttempts = 3;
   private audioInterval: NodeJS.Timeout | null = null;
   private audioQueue: Buffer[] = [];
+  // Chunks waiting for their scheduled playback time (captureTime + targetDelay).
+  // Stays sorted by targetTime because the serial pipeline pushes in capture order.
+  private pendingAudio: Array<{ pcm: Buffer; targetTime: number }> = [];
+  // Sample-exact pump state: cumulative target bytes (48 B/ms = 24kHz * 16-bit mono)
+  // and the wall-clock of the last tick. Keeps the audio PTS rate locked to the
+  // video clock so A/V doesn't drift apart on long streams.
+  private audioBytesTarget = 0;
+  private lastPumpTime = 0;
+  // Playback delay applied to every chunk (captureTime + targetDelay), auto-tuned
+  // by setTargetDelay() to ~pipeline latency + headroom. 0 until first measurement.
+  private targetDelayMs = 0;
   // Set by stop() so the close handler and attemptRestart() never respawn
   // FFmpeg after the user explicitly stopped the streamer.
   private _stopped = false;
@@ -118,6 +155,9 @@ export class RTMPStreamer extends EventEmitter {
     this.totalBytesPushed = 0;
     this.restartAttempts = 0;
     this.audioQueue = [];
+    this.pendingAudio = [];
+    this.audioBytesTarget = 0;
+    this.lastPumpTime = 0;
 
     // Initialize channel statuses
     for (const ch of channels) {
@@ -166,8 +206,14 @@ export class RTMPStreamer extends EventEmitter {
 
       const ffmpegArgs = [
         "-hide_banner", "-loglevel", "error",
-        "-probesize", "32", "-analyzeduration", "0",
-        
+
+        // NOTE: probesize/analyzeduration left at defaults. The previous
+        // "-probesize 32 -analyzeduration 0" let FFmpeg start muxing before the
+        // H.264 decoder config (AVCDecoderConfigurationRecord) arrived from the
+        // ingest, producing an invalid/empty video track in the FLV — YouTube and
+        // Twitch kept the audio and silently dropped the video.
+        "-fflags", "nobuffer",
+
         // Input 0: Original stream from OBS via local RTMP ingest
         "-i", this.ingestUrl,
 
@@ -177,8 +223,7 @@ export class RTMPStreamer extends EventEmitter {
         "-ac", "1",            // mono
         "-i", "pipe:0",        // read from stdin
 
-        // Low-latency flags
-        "-fflags", "nobuffer",
+        // Low-latency encode flags
         "-flags", "low_delay",
 
         // Audio filter (stereo ducking or mono fallback)
@@ -214,11 +259,26 @@ export class RTMPStreamer extends EventEmitter {
       // ── Audio Pump ──
       // FFmpeg requires continuous audio input to mux with the video stream.
       // If we don't supply data to stdin continuously, video muxing stalls and buffers overflow.
-      // Every 100ms, write 4800 bytes (100ms of 24kHz 16-bit mono)
+      // The pump is sample-exact: each tick it writes however many bytes the elapsed
+      // wall-clock implies (24kHz * 16-bit mono = 48 B/ms). Writing a fixed 4800 bytes
+      // per tick regardless of actual elapsed time made the audio clock drift from the
+      // video clock under event-loop load (one Node process serves every user).
       this.audioInterval = setInterval(() => {
         if (!this._active || !this.ffmpegProcess?.stdin?.writable) return;
 
-        const bytesToWrite = 4800;
+        const now = Date.now();
+        if (this.lastPumpTime === 0) this.lastPumpTime = now;
+        const elapsedMs = now - this.lastPumpTime;
+        this.lastPumpTime = now;
+
+        // Release TTS chunks whose scheduled playback time has arrived.
+        this.releasePending(now);
+
+        this.audioBytesTarget += elapsedMs * 48; // 48 B/ms = 24kHz * 16-bit mono
+        const bytesToWrite = Math.min(Math.floor(this.audioBytesTarget), 9600); // cap 200ms/tick
+        if (bytesToWrite <= 0) return;
+        this.audioBytesTarget -= bytesToWrite;
+
         const outputBuffer = Buffer.alloc(bytesToWrite, 0); // Fill with zeroes (silence) by default
         let offset = 0;
 
@@ -330,9 +390,11 @@ export class RTMPStreamer extends EventEmitter {
 
   /**
    * Push a TTS audio chunk (base64-encoded WAV) into the FFmpeg pipeline.
-   * Strips the WAV header and writes raw PCM to FFmpeg's stdin.
+   * Strips the WAV header and schedules the raw PCM to play at
+   * captureTime + targetDelay so the translated voice trails the picture by a
+   * constant offset instead of landing whenever the pipeline happens to finish.
    */
-  pushAudio(audioBase64: string): boolean {
+  pushAudio(audioBase64: string, captureTime?: number): boolean {
     if (!this._active || !this.ffmpegProcess?.stdin?.writable) {
       return false;
     }
@@ -342,18 +404,47 @@ export class RTMPStreamer extends EventEmitter {
       const pcmBuffer = stripWavHeader(wavBuffer);
 
       if (pcmBuffer.length > 0) {
-        // Backpressure: if the queue is full, drop the oldest chunk rather
-        // than growing memory without bound under TTS burst conditions.
-        if (this.audioQueue.length >= this.maxAudioQueueChunks) {
-          this.audioQueue.shift();
-        }
-        this.audioQueue.push(pcmBuffer);
+        const targetTime = (captureTime || Date.now()) + this.targetDelayMs;
+        this.pendingAudio.push({ pcm: pcmBuffer, targetTime });
+        // Release immediately if this chunk's scheduled time has already arrived.
+        this.releasePending(Date.now());
       }
 
       return true;
     } catch (err) {
       logger.error({ err }, "Push audio failed");
       return false;
+    }
+  }
+
+  /**
+   * Auto-tune the playback delay from measured pipeline latency (ms). Smoothed so
+   * one slow chunk doesn't yank the offset around. Stays in [2s, 8s].
+   */
+  setTargetDelay(totalMs: number): void {
+    const target = Math.max(2000, Math.min(8000, Math.round(totalMs) + 500));
+    this.targetDelayMs =
+      this.targetDelayMs === 0
+        ? target
+        : Math.round(this.targetDelayMs * 0.7 + target * 0.3);
+  }
+
+  /**
+   * Move chunks whose scheduled playback time has arrived into the drain queue.
+   * Chunks that missed their window by > 1.5s are dropped — playing them late is
+   * exactly what makes the voice lag jitter. pendingAudio stays sorted because
+   * the serial pipeline pushes chunks in capture order.
+   */
+  private releasePending(now: number): void {
+    const TOLERANCE_MS = 1500;
+    const { due } = drainDue(this.pendingAudio, now, TOLERANCE_MS);
+    for (const item of due) {
+      // Backpressure: if the queue is full, drop the oldest chunk rather
+      // than growing memory without bound under TTS burst conditions.
+      if (this.audioQueue.length >= this.maxAudioQueueChunks) {
+        this.audioQueue.shift();
+      }
+      this.audioQueue.push(item.pcm);
     }
   }
 
@@ -369,6 +460,7 @@ export class RTMPStreamer extends EventEmitter {
     this._stopped = true; // prevent close handler / attemptRestart from respawning
     if (this.audioInterval) clearInterval(this.audioInterval);
     this.audioQueue = []; // free queued audio immediately
+    this.pendingAudio = [];
 
     try {
       // Close stdin to signal end-of-input
