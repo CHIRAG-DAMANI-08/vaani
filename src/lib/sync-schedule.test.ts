@@ -14,8 +14,10 @@ describe("computePumpWrite", () => {
     expect(computePumpWrite(-50, 100)).toEqual({ bytesToWrite: -2300, bytesTarget: 0 });
   });
 
-  it("carries the fractional remainder", () => {
-    expect(computePumpWrite(100, 100)).toEqual({ bytesToWrite: 4900, bytesTarget: 0 });
+  it("carries a sub-byte remainder", () => {
+    const r = computePumpWrite(50.2, 0);
+    expect(r.bytesToWrite).toBe(2409);
+    expect(r.bytesTarget).toBeCloseTo(0.6, 10); // float noise: 0.6000000000003638
   });
 
   it("caps at 9600 bytes per tick and carries the excess", () => {
