@@ -15,7 +15,7 @@ import { spawn, ChildProcess } from "child_process";
 import ffmpegPath from "ffmpeg-static";
 import { EventEmitter } from "events";
 import { logger } from "./logger";
-import { drainDue, DROP_TOLERANCE_MS } from "./sync-schedule";
+import { computePumpWrite, smoothDelay, drainDue, DROP_TOLERANCE_MS } from "./sync-schedule";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -249,10 +249,9 @@ export class RTMPStreamer extends EventEmitter {
         // Release TTS chunks whose scheduled playback time has arrived.
         this.releasePending(now);
 
-        this.audioBytesTarget += elapsedMs * 48; // 48 B/ms = 24kHz * 16-bit mono
-        const bytesToWrite = Math.min(Math.floor(this.audioBytesTarget), 9600); // cap 200ms/tick
+        const { bytesToWrite, bytesTarget } = computePumpWrite(elapsedMs, this.audioBytesTarget);
+        this.audioBytesTarget = bytesTarget;
         if (bytesToWrite <= 0) return;
-        this.audioBytesTarget -= bytesToWrite;
 
         const outputBuffer = Buffer.alloc(bytesToWrite, 0); // Fill with zeroes (silence) by default
         let offset = 0;
@@ -397,11 +396,7 @@ export class RTMPStreamer extends EventEmitter {
    * one slow chunk doesn't yank the offset around. Stays in [2s, 8s].
    */
   setTargetDelay(totalMs: number): void {
-    const target = Math.max(2000, Math.min(8000, Math.round(totalMs) + 500));
-    this.targetDelayMs =
-      this.targetDelayMs === 0
-        ? target
-        : Math.round(this.targetDelayMs * 0.7 + target * 0.3);
+    this.targetDelayMs = smoothDelay(this.targetDelayMs, totalMs);
   }
 
   /**
