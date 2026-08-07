@@ -31,3 +31,30 @@ export function smoothDelay(currentMs: number, measuredMs: number): number {
   const target = Math.max(MIN_DELAY_MS, Math.min(MAX_DELAY_MS, Math.round(measuredMs) + 500));
   return currentMs === 0 ? target : Math.round(currentMs * 0.7 + target * 0.3);
 }
+
+// Chunks arriving >1.5s past their scheduled time are dropped, not played late
+export const DROP_TOLERANCE_MS = 1500;
+
+export type PendingChunk<T> = T & { targetTime: number };
+
+/**
+ * Drain the head of a time-sorted pending list at `now`. Chunks whose scheduled
+ * playback time has arrived are returned as `due`; chunks that arrived more than
+ * `toleranceMs` late are dropped (counted) — playing them late is exactly what
+ * makes the translated voice lag jitter. The list must be sorted by targetTime
+ * (the serial pipeline preserves capture order). Mutates `pending` in place.
+ */
+export function drainDue<T>(
+  pending: PendingChunk<T>[],
+  now: number,
+  toleranceMs: number
+): { due: T[]; dropped: number } {
+  const due: T[] = [];
+  let dropped = 0;
+  while (pending.length > 0 && now >= pending[0].targetTime) {
+    const item = pending.shift()!;
+    if (now - item.targetTime > toleranceMs) dropped++;
+    else due.push(item);
+  }
+  return { due, dropped };
+}

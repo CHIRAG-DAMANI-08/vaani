@@ -15,6 +15,7 @@ import { spawn, ChildProcess } from "child_process";
 import ffmpegPath from "ffmpeg-static";
 import { EventEmitter } from "events";
 import { logger } from "./logger";
+import { drainDue, DROP_TOLERANCE_MS } from "./sync-schedule";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -74,32 +75,6 @@ function stripWavHeader(wavBuffer: Buffer): Buffer {
 
   // Fallback: skip standard 44-byte header
   return wavBuffer.subarray(44);
-}
-
-// ── Jitter-buffer scheduling policy ────────────────────────────────────────
-
-export type PendingChunk<T> = T & { targetTime: number };
-
-/**
- * Drain the head of a time-sorted pending list at `now`. Chunks whose scheduled
- * playback time has arrived are returned as `due`; chunks that arrived more than
- * `toleranceMs` late are dropped (counted) — playing them late is exactly what
- * makes the translated voice lag jitter. The list must be sorted by targetTime
- * (the serial pipeline preserves capture order). Mutates `pending` in place.
- */
-export function drainDue<T>(
-  pending: PendingChunk<T>[],
-  now: number,
-  toleranceMs: number
-): { due: T[]; dropped: number } {
-  const due: T[] = [];
-  let dropped = 0;
-  while (pending.length > 0 && now >= pending[0].targetTime) {
-    const item = pending.shift()!;
-    if (now - item.targetTime > toleranceMs) dropped++;
-    else due.push(item);
-  }
-  return { due, dropped };
 }
 
 // ── RTMP Streamer ──────────────────────────────────────────────────────────
@@ -436,8 +411,7 @@ export class RTMPStreamer extends EventEmitter {
    * the serial pipeline pushes chunks in capture order.
    */
   private releasePending(now: number): void {
-    const TOLERANCE_MS = 1500;
-    const { due } = drainDue(this.pendingAudio, now, TOLERANCE_MS);
+    const { due } = drainDue(this.pendingAudio, now, DROP_TOLERANCE_MS);
     for (const item of due) {
       // Backpressure: if the queue is full, drop the oldest chunk rather
       // than growing memory without bound under TTS burst conditions.

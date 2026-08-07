@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computePumpWrite, smoothDelay } from "./sync-schedule";
+import { computePumpWrite, smoothDelay, drainDue } from "./sync-schedule";
 
 describe("computePumpWrite", () => {
   it("writes 4800 bytes for 100ms elapsed", () => {
@@ -38,5 +38,41 @@ describe("smoothDelay", () => {
 
   it("clamps to the maximum delay", () => {
     expect(smoothDelay(8000, 8000)).toBe(8000); // 8500 → clamped to 8000
+  });
+});
+
+describe("drainDue", () => {
+  const P = (targetTime: number, pcm: string) => ({ targetTime, pcm });
+
+  it("keeps not-yet-due chunks pending", () => {
+    const pending = [P(3000, "a")];
+    expect(drainDue(pending, 2999, 1500)).toEqual({ due: [], dropped: 0 });
+    expect(pending).toHaveLength(1);
+  });
+
+  it("releases chunks at their target time", () => {
+    expect(drainDue([P(3000, "a")], 3000, 1500).due.map((x) => x.pcm)).toEqual(["a"]);
+  });
+
+  it("drops chunks more than tolerance late", () => {
+    const pending = [P(1000, "a")];
+    expect(drainDue(pending, 2600, 1500)).toEqual({ due: [], dropped: 1 });
+    expect(pending).toHaveLength(0);
+  });
+
+  it("plays chunks within tolerance", () => {
+    expect(drainDue([P(1000, "a")], 2000, 1500).due.map((x) => x.pcm)).toEqual(["a"]);
+  });
+
+  it("releases in order across multiple target times", () => {
+    const pending = [P(3000, "a"), P(6000, "b"), P(9000, "c")];
+    expect(drainDue(pending, 4500, 1500).due.map((x) => x.pcm)).toEqual(["a"]);
+    expect(pending).toHaveLength(2);
+    expect(drainDue(pending, 7000, 1500).due.map((x) => x.pcm)).toEqual(["b"]);
+    expect(pending).toHaveLength(1);
+  });
+
+  it("handles an empty list", () => {
+    expect(drainDue([], 5000, 1500)).toEqual({ due: [], dropped: 0 });
   });
 });
