@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { toast } from "sonner";
+import { joinWaitlist } from "@/app/actions/join-waitlist";
+import { logger } from "@/lib/logger";
 
 const HERO_VIDEO =
   "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260325_120549_0cd82c36-56b3-4dd9-b190-069cfc3a623f.mp4";
@@ -21,6 +23,7 @@ const lineReveal = {
 export const HeroSection = () => {
   const ref = useRef<HTMLElement>(null);
   const [email, setEmail] = useState("");
+  const [pending, setPending] = useState(false);
 
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -31,14 +34,34 @@ export const HeroSection = () => {
   const contentY = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
   const contentOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast.error("Enter a valid email to join the beta.");
       return;
     }
-    toast.success("You're on the list. Welcome to vaani.");
-    setEmail("");
+
+    setPending(true);
+    try {
+      const formData = new FormData();
+      formData.append("email", email);
+
+      const response = await joinWaitlist(null, formData);
+
+      if (response.state === "success") {
+        toast.success("You're on the waitlist. Check your inbox to confirm.");
+        setEmail("");
+      } else if (response.state === "duplicate") {
+        toast.info("You're already on the waitlist.");
+      } else {
+        toast.error(response.message);
+      }
+    } catch (error) {
+      logger.error({ error }, "Beta join failed");
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -124,9 +147,10 @@ export const HeroSection = () => {
           />
           <button
             type="submit"
-            className="px-6 py-3.5 rounded-full bg-[var(--landing-fg)] text-[var(--landing-bg)] text-sm font-medium hover:bg-white/90 active:scale-95 transition-all duration-200"
+            disabled={pending}
+            className="px-6 py-3.5 rounded-full bg-[var(--landing-fg)] text-[var(--landing-bg)] text-sm font-medium hover:bg-white/90 active:scale-95 transition-all duration-200 disabled:opacity-60"
           >
-            Join beta
+            {pending ? "Joining…" : "Join beta"}
           </button>
         </motion.form>
 

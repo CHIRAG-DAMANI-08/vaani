@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Landing from "../components/landing/Landing";
 import { Toaster } from "../components/ui/sonner";
+import { WaitlistModal } from "./components/WaitlistModal";
 
 export default function Home() {
   useEffect(() => {
@@ -15,6 +16,7 @@ export default function Home() {
   return (
     <>
       <Landing />
+      <WaitlistModal />
       <Toaster position="bottom-center" />
     </>
   );

@@ -6,6 +6,7 @@ import { logger } from "@/lib/logger";
 import { connectToDatabase } from "@/lib/mongodb";
 import { WaitlistEntry } from "@/lib/models/waitlist-entry";
 import { rateLimit } from "@/lib/rate-limit";
+import { decideJoin } from "@/lib/waitlist-policy";
 
 const schema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -67,13 +68,41 @@ export async function joinWaitlist(
   try {
     await connectToDatabase();
 
-    await WaitlistEntry.create({
-      ...parsed.data,
-      status: "pending",
-    });
+    const existing = await WaitlistEntry.findOne({ email: parsed.data.email });
+
+    const decision = decideJoin(
+      existing
+        ? { emailSent: existing.emailSent, attemptCount: existing.attemptCount }
+        : null
+    );
+
+    if (decision.state === "duplicate") {
+      return {
+        ok: true,
+        state: "duplicate",
+        message: "You're already on the waitlist.",
+      };
+    }
+    if (decision.state === "blocked") {
+      return {
+        ok: false,
+        state: "server_error",
+        message: "Too many attempts. Please try again later.",
+      };
+    }
+
+    // Count this attempt; keep first-submission details, never overwrite on retry.
+    const entry = await WaitlistEntry.findOneAndUpdate(
+      { email: parsed.data.email },
+      {
+        $inc: { attemptCount: 1 },
+        $setOnInsert: { ...parsed.data, status: "pending", emailSent: false },
+      },
+      { upsert: true, new: true }
+    );
 
     if (resend) {
-      const displayName = parsed.data.name ?? "there";
+      const displayName = entry?.name ?? parsed.data.name ?? "there";
 
       try {
         await resend.emails.send({
@@ -89,6 +118,8 @@ export async function joinWaitlist(
             </div>
           `,
         });
+        // Only mark sent once Resend actually accepted it.
+        await WaitlistEntry.updateOne({ email: parsed.data.email }, { emailSent: true });
       } catch (error) {
         logger.error({ err: error }, "Waitlist confirmation email failed");
       }
@@ -103,6 +134,7 @@ export async function joinWaitlist(
     };
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
+      // Race safety: concurrent upserts for the same email hit the unique index.
       return {
         ok: true,
         state: "duplicate",
@@ -112,7 +144,7 @@ export async function joinWaitlist(
 
     // Log the actual server error to the console for debugging
     logger.error({ err: error }, "Waitlist join failed");
-    
+
     return {
       ok: false,
       state: "server_error",

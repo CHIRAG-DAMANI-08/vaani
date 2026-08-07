@@ -40,6 +40,14 @@ const waitlistSchema = new Schema(
       enum: ["pending", "invited", "converted"],
       default: "pending",
     },
+    emailSent: {
+      type: Boolean,
+      default: false,
+    },
+    attemptCount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

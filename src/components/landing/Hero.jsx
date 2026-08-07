@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { toast } from "sonner";
+import { joinWaitlist } from "@/app/actions/join-waitlist";
+import { logger } from "@/lib/logger";
 
 const HERO_VIDEO =
   "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260325_120549_0cd82c36-56b3-4dd9-b190-069cfc3a623f.mp4";
@@ -19,6 +21,7 @@ const lineReveal = {
 export const Hero = () => {
   const ref = useRef(null);
   const [email, setEmail] = useState("");
+  const [pending, setPending] = useState(false);
 
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -28,14 +31,34 @@ export const Hero = () => {
   const contentY = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
   const contentOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
 
-  const handleSubscribe = (e) => {
+  const handleSubscribe = async (e) => {
     e.preventDefault();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast.error("Enter a valid email to join the beta.");
       return;
     }
-    toast.success("You're on the list. Welcome to vaani.");
-    setEmail("");
+
+    setPending(true);
+    try {
+      const formData = new FormData();
+      formData.append("email", email);
+
+      const response = await joinWaitlist(null, formData);
+
+      if (response.state === "success") {
+        toast.success("You're on the waitlist. Check your inbox to confirm.");
+        setEmail("");
+      } else if (response.state === "duplicate") {
+        toast.info("You're already on the waitlist.");
+      } else {
+        toast.error(response.message);
+      }
+    } catch (error) {
+      logger.error({ error }, "Beta join failed");
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -126,12 +149,13 @@ export const Hero = () => {
           />
           <motion.button
             type="submit"
+            disabled={pending}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
-            className="bg-foreground text-background rounded-full px-8 py-3 text-sm font-semibold tracking-wide whitespace-nowrap"
+            className="bg-foreground text-background rounded-full px-8 py-3 text-sm font-semibold tracking-wide whitespace-nowrap disabled:opacity-60"
             data-testid="hero-subscribe-button"
           >
-            JOIN BETA
+            {pending ? "JOINING…" : "JOIN BETA"}
           </motion.button>
         </motion.form>
 

@@ -79,6 +79,7 @@ export const CTA = () => {
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
+            onClick={() => window.dispatchEvent(new Event("open-waitlist"))}
             className="bg-foreground text-background rounded-lg px-8 py-3.5 text-sm font-semibold tracking-wide"
             data-testid="cta-subscribe-button"
           >
