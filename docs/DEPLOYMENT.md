@@ -31,7 +31,9 @@ but it *does* upload the full stream once **per destination** (the `tee` muxer).
 - **Shape:** use the Free Tier **Ampere A1** (ARM, up to 4 OCPU / 24 GB) if it's
   available in your region. The ARM Docker image is fine (`node:20-bookworm-slim`
   and apt `ffmpeg` both support arm64). The AMD `E2.1.Micro` (1 GB RAM) works but
-  is tight for the Next.js build — prefer Ampere.
+  `next build` will OOM without swap — if you're on E2.1.Micro, **follow step 7a
+  (swap file) before `docker compose up`**. (Confirmed on 2026-08-08: the dev VM
+  is `VM.Standard.E2.1.Micro`.)
 - **Image:** Ubuntu 22.04 or 24.04 LTS.
 - **Public IP:** note it. **Reserve it** (Network → IP management → Reserved
   public IPs → attach to the instance) so a reboot doesn't change it. If you
@@ -121,6 +123,15 @@ cd ~
 git clone https://github.com/CHIRAG-DAMANI-08/vaani.git
 cd vaani
 # write .env (step 6)
+
+# 7a. Swap file — REQUIRED on the 1 GB E2.1.Micro, or `next build` OOMs.
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+swapon --show   # verify "2G" is listed
+
 docker compose up -d --build
 docker compose logs -f
 ```
