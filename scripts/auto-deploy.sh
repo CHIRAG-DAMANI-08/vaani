@@ -21,7 +21,14 @@ git fetch origin --prune >> "$LOG" 2>&1 || { echo "$(date +%H:%M) fetch failed (
 
 # Already up to date?
 if git merge-base --is-ancestor "origin/$BRANCH" HEAD 2>/dev/null; then
-  echo "$(date +%H:%M) up to date, nothing to do" >> "$LOG"
+  # Server not running (e.g. after a reboot)? Start it.
+  if ! pgrep -f "tsx server.ts" >/dev/null; then
+    echo "$(date +%H:%M) up to date but server down — starting it" >> "$LOG"
+    nohup npm start >> "$APP_DIR/server.log" 2>&1 &
+    disown
+  else
+    echo "$(date +%H:%M) up to date, nothing to do" >> "$LOG"
+  fi
   exit 0
 fi
 
