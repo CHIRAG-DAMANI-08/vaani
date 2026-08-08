@@ -6,9 +6,11 @@ import { X, KeyRound, Radio, Zap, ArrowRight, CheckCircle2 } from "lucide-react"
 import { useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { getIngestBaseUrl } from "@/lib/ingest";
+import { useCSRF } from "@/lib/use-csrf";
 
 export function OnboardingWizard() {
   const { user } = useUser();
+  const { csrfToken } = useCSRF();
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [apiKey, setApiKey] = useState("");
@@ -31,35 +33,25 @@ export function OnboardingWizard() {
       if (localStorage.getItem("vaani_onboarding_done")) return;
 
       try {
-        const [keyRes, chanRes] = await Promise.all([
-          fetch("/api/key/status"),
-          fetch("/api/channels")
-        ]);
-        
-        let needsKey = false;
-        let needsChannel = false;
+        // Source of truth is the server: once a key is saved the User doc has
+        // onboardingComplete=true, so the wizard must not re-open (across
+        // browsers / after sign-out), regardless of localStorage.
+        const keyRes = await fetch("/api/key/status");
+        if (!keyRes.ok) return;
 
-        if (keyRes.ok) {
-          const data = await keyRes.json();
-          needsKey = !data.connected;
-        }
-
-        if (chanRes.ok) {
-          const data = await chanRes.json();
-          needsChannel = !data.channels || data.channels.length === 0;
-        }
-
-        if (needsKey || needsChannel) {
-          setIsOpen(true);
-          setStep(needsKey ? 1 : 2);
-        } else {
+        const data = await keyRes.json();
+        if (data.onboardingComplete || data.connected) {
           localStorage.setItem("vaani_onboarding_done", "true");
+          return;
         }
+
+        setIsOpen(true);
+        setStep(1);
       } catch (e) {
         // Silently fail
       }
     }
-    
+
     checkState();
   }, []);
 
@@ -70,11 +62,18 @@ export function OnboardingWizard() {
 
   const handleSaveKey = async () => {
     if (!apiKey.trim()) return;
+    if (!csrfToken) {
+      toast.error("Still setting up. Please try again in a moment.");
+      return;
+    }
     setIsSaving(true);
     try {
-      const res = await fetch("/api/key", {
+      const res = await fetch("/api/key/validate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
         body: JSON.stringify({ key: apiKey }),
       });
       if (res.ok) {
@@ -92,18 +91,24 @@ export function OnboardingWizard() {
   };
 
   const handleSaveChannel = async () => {
+    if (!csrfToken) {
+      toast.error("Still setting up. Please try again in a moment.");
+      return;
+    }
     setIsSaving(true);
     try {
       // Create a default Hindi channel
       const res = await fetch("/api/channels", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
         body: JSON.stringify({
           languageId: "hi",
-          name: "YouTube (Hindi)",
           enabled: true,
           rtmpUrl,
-          streamKey,
+          rtmpKey: streamKey,
         }),
       });
       if (res.ok) {

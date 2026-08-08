@@ -99,6 +99,7 @@ export async function POST(request: Request) {
         sarvamKeyEnc: encrypted,
         sarvamKeyLast4: last4,
         sarvamKeyUpdatedAt: new Date(),
+        onboardingComplete: true,
       },
       { upsert: true, new: true }
     );

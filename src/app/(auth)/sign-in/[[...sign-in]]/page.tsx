@@ -4,12 +4,12 @@ import { useSignIn, useAuth, useClerk } from "@clerk/nextjs";
 import { logger } from "@/lib/logger";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function SignInPage() {
   const { signIn, errors, fetchStatus } = useSignIn();
-  const { isLoaded } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [verifyCode, setVerifyCode] = useState(false);
@@ -27,6 +27,12 @@ export default function SignInPage() {
     );
 
   const isLoading = fetchStatus === "fetching" || !isLoaded;
+
+  // Already signed in — bounce to the dashboard instead of showing the form.
+  useEffect(() => {
+    if (isLoaded && isSignedIn) router.replace("/dashboard");
+  }, [isLoaded, isSignedIn, router]);
+  if (isLoaded && isSignedIn) return null;
 
   const handleSubmit = async (formData: FormData) => {
     const emailAddress = formData.get("email") as string;

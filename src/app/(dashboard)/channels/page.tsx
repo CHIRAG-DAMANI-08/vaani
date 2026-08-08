@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "@/app/components/GlassCard";
+import { useCSRF } from "@/lib/use-csrf";
 
 type ChannelData = {
   id: string;
@@ -40,6 +41,7 @@ export default function ChannelsPage() {
   const [showRtmpKey, setShowRtmpKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const { csrfToken } = useCSRF();
 
   const fetchChannels = useCallback(async () => {
     try {
@@ -64,7 +66,10 @@ export default function ChannelsPage() {
     try {
       const res = await fetch("/api/channels", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken ?? "",
+        },
         body: JSON.stringify({
           languageId,
           rtmpUrl: editRtmpUrl || null,
@@ -100,7 +105,10 @@ export default function ChannelsPage() {
     try {
       const res = await fetch("/api/channels", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken ?? "",
+        },
         body: JSON.stringify({
           languageId: ch.id,
           enabled: !ch.enabled,
@@ -120,7 +128,10 @@ export default function ChannelsPage() {
     try {
       const res = await fetch("/api/channels", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken ?? "",
+        },
         body: JSON.stringify({ languageId }),
       });
       if (!res.ok) {

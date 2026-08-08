@@ -25,17 +25,26 @@ export async function GET() {
 
     const user = await User.findOne(
       { clerkId: userId },
-      { sarvamKeyLast4: 1, sarvamKeyUpdatedAt: 1, sarvamKeyEnc: 1 }
+      {
+        sarvamKeyLast4: 1,
+        sarvamKeyUpdatedAt: 1,
+        sarvamKeyEnc: 1,
+        onboardingComplete: 1,
+      }
     ).lean();
 
     // No user record or no key stored
     if (!user || !user.sarvamKeyEnc) {
-      return NextResponse.json({ connected: false }, { status: 200 });
+      return NextResponse.json(
+        { connected: false, onboardingComplete: !!user?.onboardingComplete },
+        { status: 200 }
+      );
     }
 
     return NextResponse.json(
       {
         connected: true,
+        onboardingComplete: !!user.onboardingComplete,
         masked: `sk_live_••••••••${user.sarvamKeyLast4 || "????"}`,
         updatedAt: user.sarvamKeyUpdatedAt
           ? new Date(user.sarvamKeyUpdatedAt).toISOString()
