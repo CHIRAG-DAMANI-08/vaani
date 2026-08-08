@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { X, KeyRound, Radio, Zap, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
+import { getIngestBaseUrl } from "@/lib/ingest";
 
 export function OnboardingWizard() {
   const { user } = useUser();
@@ -17,6 +18,11 @@ export function OnboardingWizard() {
   const [platform, setPlatform] = useState("youtube");
   const [rtmpUrl, setRtmpUrl] = useState("rtmp://a.rtmp.youtube.com/live2");
   const [streamKey, setStreamKey] = useState("");
+  const [ingestUrl, setIngestUrl] = useState("rtmp://localhost:1935/live");
+
+  useEffect(() => {
+    setIngestUrl(getIngestBaseUrl());
+  }, []);
 
   useEffect(() => {
     // Check if we need to show the wizard
@@ -218,7 +224,7 @@ export function OnboardingWizard() {
             <div className="space-y-3 mb-6 bg-white border border-gray-200 rounded-[16px] p-4">
               <div>
                 <span className="text-[11px] font-bold text-gray-400 uppercase">Server URL</span>
-                <p className="text-[13px] font-mono mt-1 text-gray-900 select-all">rtmp://localhost:1935/live</p>
+                <p className="text-[13px] font-mono mt-1 text-gray-900 select-all">{ingestUrl}</p>
               </div>
               <div className="pt-2 border-t border-gray-100">
                 <span className="text-[11px] font-bold text-gray-400 uppercase">Stream Key</span>

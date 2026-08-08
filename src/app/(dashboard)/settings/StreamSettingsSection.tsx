@@ -5,10 +5,12 @@ import { useUser } from "@clerk/nextjs";
 import { Radio, Copy, Check, HelpCircle, Mic } from "lucide-react";
 import { OBSGuideModal } from "@/app/components/OBSGuideModal";
 import { GlassCard } from "@/app/components/GlassCard";
+import { getIngestBaseUrl } from "@/lib/ingest";
 
 export function StreamSettingsSection() {
   const { user } = useUser();
   const [translationSource, setTranslationSource] = useState("mic_only");
+  const [ingestUrl, setIngestUrl] = useState("rtmp://localhost:1935/live");
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
@@ -17,6 +19,10 @@ export function StreamSettingsSection() {
     import("@/lib/obs-relay-client").then((mod) => {
       setTranslationSource(mod.obsRelayManager.translationSource);
     });
+  }, []);
+
+  useEffect(() => {
+    setIngestUrl(getIngestBaseUrl());
   }, []);
 
   const handleSourceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -59,9 +65,9 @@ export function StreamSettingsSection() {
           <span className="text-xs font-sans font-semibold text-neutral-400 uppercase tracking-wider">Server URL</span>
           <div 
             className="liquid-glass border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2 cursor-pointer hover:border-white/20 transition-all"
-            onClick={() => copyToClipboard("rtmp://localhost:1935/live", "url")}
+            onClick={() => copyToClipboard(ingestUrl, "url")}
           >
-            <span className="font-mono text-xs text-neutral-300">rtmp://localhost:1935/live</span>
+            <span className="font-mono text-xs text-neutral-300">{ingestUrl}</span>
             {copiedUrl ? <Check className="w-3.5 h-3.5 text-[#2DD4BF]" strokeWidth={1.6} /> : <Copy className="w-3.5 h-3.5 text-neutral-500" strokeWidth={1.6} />}
           </div>
         </div>
