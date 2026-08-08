@@ -33,9 +33,11 @@ git pull --ff-only origin "$BRANCH" >> "$LOG" 2>&1 || {
 
 # Rebuild (with a heap big enough for the 1GB box) and restart the server.
 export NODE_OPTIONS="--max-old-space-size=2048"
-if ! npm install >> "$LOG" 2>&1; then
-  echo "$(date +%H:%M) npm install failed, aborting deploy" >> "$LOG"
-  exit 1
+if git diff --name-only HEAD@{1} HEAD -- package.json package-lock.json | grep -q .; then
+  if ! npm install >> "$LOG" 2>&1; then
+    echo "$(date +%H:%M) npm install failed, aborting deploy" >> "$LOG"
+    exit 1
+  fi
 fi
 if ! npm run build >> "$LOG" 2>&1; then
   echo "$(date +%H:%M) build FAILED, keeping old server running" >> "$LOG"
