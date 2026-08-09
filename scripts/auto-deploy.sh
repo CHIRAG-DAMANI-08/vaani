@@ -51,7 +51,7 @@ deploy() {
     exit 1
   fi
 
-  nohup npm start >> "$APP_DIR/server.log" 2>&1 &
+  nohup npm start >> "$APP_DIR/server.log" 2>&1 < /dev/null &
   disown
   echo "$(date +%H:%M) deployed and restarted" >> "$LOG"
 }
@@ -61,7 +61,7 @@ if git merge-base --is-ancestor "origin/$BRANCH" HEAD 2>/dev/null; then
   if ! pgrep -f "tsx server.ts" >/dev/null; then
     echo "$(date +%H:%M) up to date but server down — starting it" >> "$LOG"
     if valid_build; then
-      nohup npm start >> "$APP_DIR/server.log" 2>&1 &
+      nohup npm start >> "$APP_DIR/server.log" 2>&1 < /dev/null &
       disown
     else
       # No valid build (reboot after a failed build) — rebuild first.
