@@ -58,7 +58,8 @@ function decryptValue(encryptedStr: string | null | undefined): string | null {
 // In-memory connection state registry per user
 const activeSessions = new Map<string, WebSocket>();
 
-// Per-user RTMP streamers — manages FFmpeg processes
+// Per-user, per-language RTMP streamers — each language has its own FFmpeg
+// process so a destination only receives that language's audio.
 const activeStreamers = new Map<string, Map<string, RTMPStreamer>>();
 
 // Track OBS connected status globally so Next.js API can read it
