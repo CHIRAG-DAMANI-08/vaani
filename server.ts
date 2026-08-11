@@ -10,6 +10,7 @@ import { Session } from "./src/lib/models/session";
 import { runPipeline } from "./src/lib/sarvam-pipeline";
 import { sessionManager } from "./src/lib/stream-session";
 import { RTMPStreamer, type ChannelRTMPConfig, type RTMPStreamerSnapshot } from "./src/lib/rtmp-streamer";
+import { groupTTSPayloadsByLanguage, mergeSnapshots } from "./src/lib/channel-routing";
 import NodeMediaServer from "node-media-server";
 import { spawn, ChildProcess } from "child_process";
 import ffmpegPath from "ffmpeg-static";
@@ -58,7 +59,7 @@ function decryptValue(encryptedStr: string | null | undefined): string | null {
 const activeSessions = new Map<string, WebSocket>();
 
 // Per-user RTMP streamers — manages FFmpeg processes
-const activeStreamers = new Map<string, RTMPStreamer>();
+const activeStreamers = new Map<string, Map<string, RTMPStreamer>>();
 
 // Track OBS connected status globally so Next.js API can read it
 // Ensure it's not redefined on hot-reloads
@@ -310,23 +311,31 @@ async function executeChunkPipeline(
     sessionManager.setError(userId, result.error);
   }
 
-  // 5. Push TTS audio to RTMP streamer
-  const streamer = activeStreamers.get(userId);
+  // 5. Push TTS audio to RTMP streamers (one per language)
+  const languageStreamers = activeStreamers.get(userId);
 
-  // Auto-tune the output delay so the voice trails the picture by a constant
-  // offset (pipeline latency + headroom) instead of landing whenever a chunk
-  // happens to finish.
-  if (streamer && result.timings?.total) {
-    streamer.setTargetDelay(result.timings.total);
+  // Auto-tune the output delay for every language streamer so each voice
+  // trails the picture by a constant offset (pipeline latency + headroom).
+  if (languageStreamers && result.timings?.total) {
+    for (const streamer of languageStreamers.values()) {
+      streamer.setTargetDelay(result.timings.total);
+    }
   }
 
-  if (streamer?.active && result.ttsOutputs.length > 0) {
-    for (const ttsOutput of result.ttsOutputs) {
-      if (ttsOutput.audioBase64) {
-        streamer.pushAudio(ttsOutput.audioBase64, captureTime);
+  if (languageStreamers && result.ttsOutputs.length > 0) {
+    const payloadsByLanguage = groupTTSPayloadsByLanguage(result.ttsOutputs);
+    let pushedCount = 0;
+    for (const [languageId, payloads] of payloadsByLanguage) {
+      const streamer = languageStreamers.get(languageId);
+      if (!streamer?.active) continue;
+      for (const payload of payloads) {
+        streamer.pushAudio(payload.audioBase64, captureTime);
+        pushedCount++;
       }
     }
-    sessionManager.updateStage(userId, "stream", "done", `${result.ttsOutputs.length} ch`);
+    if (pushedCount > 0) {
+      sessionManager.updateStage(userId, "stream", "done", `${pushedCount} ch`);
+    }
   }
 
   // 6. Push full result to client (with sequence number for ordering)
@@ -356,11 +365,11 @@ async function executeChunkPipeline(
   );
 
   // 8. Push updated session snapshot
-  const rtmpSnapshot = activeStreamers.get(userId)?.getSnapshot();
+  const rtmpSnapshot = getStreamersSnapshot(userId);
   sendToClient(ws, {
     type: "SESSION_SNAPSHOT",
     ...sessionManager.getSnapshot(userId),
-    rtmp: rtmpSnapshot || { active: false, channels: [] },
+    rtmp: rtmpSnapshot,
   });
 }
 
@@ -368,6 +377,33 @@ function sendToClient(ws: WebSocket | undefined, msg: any) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(msg));
   }
+}
+
+// ── Per-language RTMP streamer helpers ─────────────────────────────────────
+// One RTMPStreamer (one FFmpeg) per language so each destination receives
+// only its own language's audio. These helpers keep the nested-map wiring in
+// one place.
+
+/** Stop every per-language streamer for a user and drop the user's entry. */
+function stopStreamersForUser(userId: string): void {
+  const languageStreamers = activeStreamers.get(userId);
+  if (languageStreamers) {
+    for (const streamer of languageStreamers.values()) {
+      streamer.stop();
+    }
+  }
+  activeStreamers.delete(userId);
+}
+
+/** Aggregate every language streamer's snapshot into the dashboard shape. */
+function getStreamersSnapshot(userId: string): RTMPStreamerSnapshot {
+  const languageStreamers = activeStreamers.get(userId);
+  if (!languageStreamers || languageStreamers.size === 0) {
+    return { active: false, channels: [] };
+  }
+  return mergeSnapshots(
+    Array.from(languageStreamers.values()).map((streamer) => streamer.getSnapshot())
+  );
 }
 
 // ── Audio Extraction for Native RTMP ───────────────────────────────────────
@@ -597,11 +633,7 @@ app.prepare().then(() => {
       stopAudioExtraction(userId);
       const ws = activeSessions.get(userId);
       if (ws && sessionManager.isActive(userId)) {
-        const streamer = activeStreamers.get(userId);
-        if (streamer) {
-          streamer.stop();
-          activeStreamers.delete(userId);
-        }
+        stopStreamersForUser(userId);
         const session = sessionManager.stopSession(userId);
         saveSessionToDb(userId, session);
         sendToClient(ws, {
@@ -705,11 +737,11 @@ app.prepare().then(() => {
 
       // Send current session snapshot if there's an active session
       if (sessionManager.isActive(userId)) {
-        const rtmpSnap = activeStreamers.get(userId)?.getSnapshot();
+        const rtmpSnap = getStreamersSnapshot(userId);
         sendToClient(ws, {
           type: "SESSION_SNAPSHOT",
           ...sessionManager.getSnapshot(userId),
-          rtmp: rtmpSnap || { active: false, channels: [] },
+          rtmp: rtmpSnap,
         });
       }
     } catch (e) {
@@ -737,11 +769,11 @@ app.prepare().then(() => {
     // ── Session snapshot push interval (every 1s while streaming) ──
     const snapshotInterval = setInterval(() => {
       if (sessionManager.isActive(userId) && ws.readyState === WebSocket.OPEN) {
-        const rtmpSnap = activeStreamers.get(userId)?.getSnapshot();
+        const rtmpSnap = getStreamersSnapshot(userId);
         sendToClient(ws, {
           type: "SESSION_SNAPSHOT",
           ...sessionManager.getSnapshot(userId),
-          rtmp: rtmpSnap || { active: false, channels: [] },
+          rtmp: rtmpSnap,
         });
       }
     }, 1000);
@@ -775,11 +807,7 @@ app.prepare().then(() => {
           // Auto-stop session if OBS disconnects during streaming
           if (sessionManager.isActive(userId)) {
             // Stop RTMP streamer first
-            const streamer = activeStreamers.get(userId);
-            if (streamer) {
-              streamer.stop();
-              activeStreamers.delete(userId);
-            }
+            stopStreamersForUser(userId);
             const session = sessionManager.stopSession(userId);
             saveSessionToDb(userId, session);
             clearPipelineState(userId);
@@ -800,11 +828,7 @@ app.prepare().then(() => {
           // Stop the streaming session
           logger.info({ userId }, "STOP_STREAM requested");
           // Stop RTMP streamer
-          const streamer = activeStreamers.get(userId);
-          if (streamer) {
-            streamer.stop();
-            activeStreamers.delete(userId);
-          }
+          stopStreamersForUser(userId);
           const session = sessionManager.stopSession(userId);
           saveSessionToDb(userId, session);
           clearPipelineState(userId);
@@ -858,11 +882,7 @@ app.prepare().then(() => {
       clearInterval(snapshotInterval);
 
       // Stop RTMP streamer and session if WS closes
-      const streamer = activeStreamers.get(userId);
-      if (streamer) {
-        streamer.stop();
-        activeStreamers.delete(userId);
-      }
+      stopStreamersForUser(userId);
       if (sessionManager.isActive(userId)) {
         const session = sessionManager.stopSession(userId);
         saveSessionToDb(userId, session);
@@ -892,7 +912,7 @@ app.prepare().then(() => {
     }
     for (const [userId] of activeStreamers.entries()) {
       if (!sessionManager.isActive(userId)) {
-        activeStreamers.delete(userId);
+        stopStreamersForUser(userId);
         logger.debug({ userId }, "Cleaned up stale streamer");
       }
     }
@@ -910,9 +930,9 @@ app.prepare().then(() => {
     logger.info("Graceful shutdown initiated");
     
     // 1. Stop all active RTMP streamers (FFmpeg processes)
-    for (const [userId, streamer] of activeStreamers.entries()) {
-      logger.info({ userId }, "Stopping RTMP streamer");
-      streamer.stop();
+    for (const [userId] of activeStreamers.entries()) {
+      logger.info({ userId }, "Stopping RTMP streamers");
+      stopStreamersForUser(userId);
     }
     
     // 2. Stop all active audio extractors (FFmpeg processes)
@@ -964,9 +984,8 @@ async function handleGoLive(userId: string, ws?: WebSocket) {
     // audioInterval leak forever and the previous session transcript is
     // silently discarded.
     if (activeStreamers.has(userId)) {
-      logger.warn({ userId }, "handleGoLive: stopping existing streamer before restart");
-      activeStreamers.get(userId)!.stop();
-      activeStreamers.delete(userId);
+      logger.warn({ userId }, "handleGoLive: stopping existing streamers before restart");
+      stopStreamersForUser(userId);
     }
     stopAudioExtraction(userId);
     if (sessionManager.isActive(userId)) {
@@ -1003,7 +1022,7 @@ async function handleGoLive(userId: string, ws?: WebSocket) {
 
     const languages = channels.map((ch: any) => ch.languageId);
 
-    // ── Initialize RTMP Streamer ──────────────────────────────────────
+    // ── Initialize RTMP Streamers ─────────────────────────────────────
     // Build RTMP configs from channels that have both rtmpUrl and rtmpKey
     const rtmpConfigs: ChannelRTMPConfig[] = [];
     for (const ch of channels) {
@@ -1026,41 +1045,59 @@ async function handleGoLive(userId: string, ws?: WebSocket) {
       }
     }
 
-    // Start RTMP streamer if any channels have RTMP configs
-    if (rtmpConfigs.length > 0) {
-      const streamer = new RTMPStreamer();
+    // Group configs by language — one RTMPStreamer (one FFmpeg) per language
+    // so each destination receives only its own language's audio.
+    const configsByLanguage = new Map<string, ChannelRTMPConfig[]>();
+    for (const config of rtmpConfigs) {
+      const group = configsByLanguage.get(config.languageId);
+      if (group) group.push(config);
+      else configsByLanguage.set(config.languageId, [config]);
+    }
 
-      // Listen for streamer events
-      streamer.on("error", (err: Error) => {
-        logger.error({ err: err.message, userId }, "RTMP streamer error");
-        sendToClient(ws, {
-          type: "RTMP_ERROR",
-          error: err.message,
-        });
-      });
-
-      streamer.on("stopped", () => {
-        logger.info({ userId }, "RTMP stopped");
-      });
-
-      streamer.on("channel-error", (channelId: string, error: string) => {
-        sendToClient(ws, {
-          type: "RTMP_CHANNEL_ERROR",
-          channelId,
-          error,
-        });
-      });
-
+    // Start RTMP streamers if any channels have RTMP configs
+    if (configsByLanguage.size > 0) {
+      const languageStreamers = new Map<string, RTMPStreamer>();
       const ingestUrl = `rtmp://localhost:1935/live/${userId}`;
-      const started = streamer.start(rtmpConfigs, ingestUrl);
-      if (started) {
-        activeStreamers.set(userId, streamer);
-        logger.info({ userId, destinations: rtmpConfigs.length }, "RTMP streamer started");
 
+      for (const [languageId, configs] of configsByLanguage) {
+        const streamer = new RTMPStreamer();
+
+        // Listen for streamer events
+        streamer.on("error", (err: Error) => {
+          logger.error({ err: err.message, userId, languageId }, "RTMP streamer error");
+          sendToClient(ws, {
+            type: "RTMP_ERROR",
+            error: err.message,
+          });
+        });
+
+        streamer.on("stopped", () => {
+          logger.info({ userId, languageId }, "RTMP stopped");
+        });
+
+        streamer.on("channel-error", (channelId: string, error: string) => {
+          sendToClient(ws, {
+            type: "RTMP_CHANNEL_ERROR",
+            channelId,
+            error,
+          });
+        });
+
+        const started = streamer.start(configs, ingestUrl);
+        if (started) {
+          languageStreamers.set(languageId, streamer);
+          logger.info({ userId, languageId, destinations: configs.length }, "RTMP streamer started");
+        } else {
+          logger.warn({ userId, languageId }, "RTMP streamer failed to start");
+          streamer.stop();
+        }
+      }
+
+      if (languageStreamers.size > 0) {
+        activeStreamers.set(userId, languageStreamers);
         // Update stream stage
         sessionManager.updateStage(userId, "stream", "active", "Connecting...");
       } else {
-        logger.warn({ userId }, "RTMP streamer failed to start");
         sessionManager.updateStage(userId, "stream", "error", "FFmpeg failed");
       }
     } else {
@@ -1071,12 +1108,12 @@ async function handleGoLive(userId: string, ws?: WebSocket) {
     // Start the session
     sessionManager.startSession(userId, languages);
 
-    const rtmpSnap = activeStreamers.get(userId)?.getSnapshot();
+    const rtmpSnap = getStreamersSnapshot(userId);
     sendToClient(ws, {
       type: "SESSION_STARTED",
       languages,
       ...sessionManager.getSnapshot(userId),
-      rtmp: rtmpSnap || { active: false, channels: [] },
+      rtmp: rtmpSnap,
     });
 
     logger.info({ userId, languages: languages.join(", ") }, "Session started");
