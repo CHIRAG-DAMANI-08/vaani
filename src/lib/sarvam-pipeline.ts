@@ -132,9 +132,17 @@ export async function translateText(
 // ── TTS ────────────────────────────────────────────────────────────────────
 
 /**
- * Speakers that belong to bulbul:v1 model vs bulbul:v3
+ * Valid bulbul:v3 speakers. bulbul:v1 is retired — Sarvam only accepts
+ * bulbul:v2 / bulbul:v3-beta / bulbul:v3. All v3 speakers are multilingual;
+ * the output language is chosen by `language_code`, not the speaker.
  */
-const BULBUL_V1_SPEAKERS = new Set(["anushka", "manisha", "vidya", "abhilash", "arya", "karun", "hitesh"]);
+const BULBUL_V3_SPEAKERS = new Set([
+  "shubh", "aditya", "ritu", "priya", "neha", "rahul", "pooja", "rohan",
+  "simran", "kavya", "amit", "dev", "ishita", "shreya", "ratan", "varun",
+  "manan", "sumit", "roopa", "kabir", "aayan", "ashutosh", "advait", "anand",
+  "tanya", "tarun", "sunny", "mani", "gokul", "vijay", "shruti", "suhani",
+  "mohit", "kavitha", "rehan", "soham", "rupali",
+]);
 const FEMALE_SPEAKERS = new Set(["anushka", "manisha", "vidya", "ritu", "priya", "neha", "pooja", "simran", "kavya", "ishita", "shreya", "roopa", "tanya", "shruti", "suhani", "kavitha", "rupali"]);
 
 export async function textToSpeech(
@@ -150,20 +158,16 @@ export async function textToSpeech(
   const pace = Math.min(2.0, Math.max(0.5, options?.pace ?? 1.0));
   const isFemale = FEMALE_SPEAKERS.has(reqSpeaker);
 
-  // Determine primary model based on speaker registry
-  const primaryModel = BULBUL_V1_SPEAKERS.has(reqSpeaker) ? "bulbul:v1" : "bulbul:v3";
-
-  // Build fallback sequence preserving speaker gender
-  const attempts = [
-    { model: primaryModel, speaker: reqSpeaker },
-    { model: primaryModel === "bulbul:v3" ? "bulbul:v1" : "bulbul:v3", speaker: reqSpeaker },
-    { model: "bulbul:v1", speaker: isFemale ? "anushka" : "shubh" },
-    { model: "bulbul:v3", speaker: isFemale ? "kavya" : "shubh" },
-  ];
+  // Speaker is just timbre — language comes from `language_code` below.
+  // Skip the requested speaker if it's not a valid v3 voice; fall back to
+  // a gender-matched v3 speaker.
+  const candidates = BULBUL_V3_SPEAKERS.has(reqSpeaker)
+    ? [reqSpeaker, isFemale ? "ritu" : "shubh", isFemale ? "kavya" : "aditya"]
+    : [isFemale ? "ritu" : "shubh", isFemale ? "kavya" : "aditya"];
 
   let lastError: Error | null = null;
 
-  for (const attempt of attempts) {
+  for (const speaker of candidates) {
     try {
       const response = await fetch(`${SARVAM_BASE}/text-to-speech`, {
         method: "POST",
@@ -173,9 +177,9 @@ export async function textToSpeech(
         },
         body: JSON.stringify({
           text,
-          target_language_code: targetLangCode,
-          model: attempt.model,
-          speaker: attempt.speaker,
+          language_code: targetLangCode,
+          speaker,
+          model: "bulbul:v3",
           sample_rate: 24000,
           pace,
         }),
@@ -193,7 +197,7 @@ export async function textToSpeech(
         }
       } else {
         const errText = await response.text().catch(() => "");
-        logger.warn({ status: response.status, errText, attempt }, "Sarvam TTS attempt failed, trying fallback");
+        logger.warn({ status: response.status, errText, speaker }, "Sarvam TTS attempt failed, trying fallback");
         lastError = new Error(`TTS API error ${response.status}: ${errText}`);
       }
     } catch (err) {

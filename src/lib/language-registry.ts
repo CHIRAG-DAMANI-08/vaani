@@ -38,7 +38,7 @@ export const LANGUAGE_REGISTRY: LanguageEntry[] = [
     name: "Tamil",
     nativeName: "தமிழ்",
     flag: "🇮🇳",
-    defaultSpeaker: "arjun",
+    defaultSpeaker: "mani",
   },
   {
     id: "te",
@@ -46,7 +46,7 @@ export const LANGUAGE_REGISTRY: LanguageEntry[] = [
     name: "Telugu",
     nativeName: "తెలుగు",
     flag: "🇮🇳",
-    defaultSpeaker: "arjun",
+    defaultSpeaker: "vijay",
   },
   {
     id: "bn",
@@ -54,7 +54,7 @@ export const LANGUAGE_REGISTRY: LanguageEntry[] = [
     name: "Bengali",
     nativeName: "বাংলা",
     flag: "🇮🇳",
-    defaultSpeaker: "anushka",
+    defaultSpeaker: "soham",
   },
   {
     id: "kn",
@@ -62,7 +62,7 @@ export const LANGUAGE_REGISTRY: LanguageEntry[] = [
     name: "Kannada",
     nativeName: "ಕನ್ನಡ",
     flag: "🇮🇳",
-    defaultSpeaker: "arvind",
+    defaultSpeaker: "gokul",
   },
   {
     id: "ml",
@@ -70,7 +70,7 @@ export const LANGUAGE_REGISTRY: LanguageEntry[] = [
     name: "Malayalam",
     nativeName: "മലയാളം",
     flag: "🇮🇳",
-    defaultSpeaker: "amartya",
+    defaultSpeaker: "sunny",
   },
   {
     id: "gu",
@@ -78,7 +78,7 @@ export const LANGUAGE_REGISTRY: LanguageEntry[] = [
     name: "Gujarati",
     nativeName: "ગુજરાતી",
     flag: "🇮🇳",
-    defaultSpeaker: "amol",
+    defaultSpeaker: "amit",
   },
   {
     id: "pa",
@@ -86,7 +86,7 @@ export const LANGUAGE_REGISTRY: LanguageEntry[] = [
     name: "Punjabi",
     nativeName: "ਪੰਜਾਬੀ",
     flag: "🇮🇳",
-    defaultSpeaker: "arjun",
+    defaultSpeaker: "kabir",
   },
 ];
 

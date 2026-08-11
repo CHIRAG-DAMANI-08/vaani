@@ -15,15 +15,16 @@ const PRESETS = [
   "Donation received — thank you!",
 ];
 
+// Valid bulbul:v3 speakers (v1 voices like arjun/anushka were retired).
 const VOICE_SPEAKERS = [
   { id: "shubh", name: "Shubh", gender: "Male" },
-  { id: "anushka", name: "Anushka", gender: "Female" },
-  { id: "manisha", name: "Manisha", gender: "Female" },
-  { id: "vidya", name: "Vidya", gender: "Female" },
-  { id: "arjun", name: "Arjun", gender: "Male" },
-  { id: "arvind", name: "Arvind", gender: "Male" },
-  { id: "amol", name: "Amol", gender: "Male" },
-  { id: "amartya", name: "Amartya", gender: "Male" },
+  { id: "ritu", name: "Ritu", gender: "Female" },
+  { id: "kavya", name: "Kavya", gender: "Female" },
+  { id: "aditya", name: "Aditya", gender: "Male" },
+  { id: "priya", name: "Priya", gender: "Female" },
+  { id: "rahul", name: "Rahul", gender: "Male" },
+  { id: "tanya", name: "Tanya", gender: "Female" },
+  { id: "tarun", name: "Tarun", gender: "Male" },
 ];
 
 type TestResult = {
