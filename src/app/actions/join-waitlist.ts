@@ -1,5 +1,9 @@
 "use server";
 
+/**
+ * @deprecated Replaced by join-beta action in join-beta.ts.
+ * Kept for existing waitlist entries migration. New flow: /beta page → joinBeta action.
+ */
 import { z } from "zod";
 import { Resend } from "resend";
 import { logger } from "@/lib/logger";
