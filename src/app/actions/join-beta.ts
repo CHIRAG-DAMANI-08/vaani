@@ -62,11 +62,16 @@ export async function joinBeta(
     return { ok: false, state: "validation_error", message: messages[emailCheck.reason] ?? "Invalid email." };
   }
 
-  // 3. IP rate limits
+  // 3. IP rate limits (skip in dev / for unidentifiable localhost IPs — every
+  // localhost request shares one bucket, so the limiter would silently reject
+  // all local testing after 3/hr. Better to log real-world abuse upstream.)
   const ip = await getClientIp();
-  const ipHour = rateLimit(`beta-ip-hour:${ip}`, { maxRequests: 3, windowMs: 60 * 60 * 1000 });
-  const ipDay = rateLimit(`beta-ip-day:${ip}`, { maxRequests: 5, windowMs: 24 * 60 * 60 * 1000 });
+  const isLocalhostIp = ip === "unknown" || ip === "::1" || ip === "127.0.0.1";
+  const skipIpLimit = process.env.NODE_ENV !== "production" || isLocalhostIp;
+  const ipHour = skipIpLimit ? { allowed: true } : rateLimit(`beta-ip-hour:${ip}`, { maxRequests: 3, windowMs: 60 * 60 * 1000 });
+  const ipDay = skipIpLimit ? { allowed: true } : rateLimit(`beta-ip-day:${ip}`, { maxRequests: 5, windowMs: 24 * 60 * 60 * 1000 });
   if (!ipHour.allowed || !ipDay.allowed) {
+    logger.warn({ ip }, "Beta application blocked by IP rate limit");
     return { ok: false, state: "server_error", message: "Too many applications from this network." };
   }
 
