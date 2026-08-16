@@ -1,5 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+import { requireMembershipForLayout } from "@/lib/beta-membership";
 import { DashboardShell } from "./DashboardShell";
 
 export default async function DashboardLayout({
@@ -7,11 +6,6 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    redirect("/sign-in");
-  }
-
+  await requireMembershipForLayout();
   return <DashboardShell>{children}</DashboardShell>;
 }

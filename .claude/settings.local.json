@@ -44,7 +44,43 @@
       "Bash(git add:*)",
       "Bash(git worktree:*)",
       "Bash(git rm:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(curl -s -X GET http://localhost:3000/api/csrf)",
+      "Bash(curl -s -X POST http://localhost:3000/api/test-pipeline \\\\\n  -H \"Content-Type: application/json\" \\\\\n  -H \"x-csrf-token: 53626c6fa35ad58965612cb63158c73e8e7064403ddbadb4f9fb2a820758fa0d\" \\\\\n  -d '{\"text\":\"Hello world\",\"targetLanguages\":[\"hi\"],\"speaker\":\"shubh\",\"pace\":1.0}')",
+      "Bash(curl -s http://localhost:3000/api/channels)",
+      "Bash(curl -s -H \"Cookie: __session=test\" http://localhost:3000/api/channels)",
+      "Bash(curl -s -I http://localhost:3000/ | grep -i content-security-policy)",
+      "Bash(taskkill /PID 40848 /F)",
+      "Bash(taskkill //PID 40848 //F)",
+      "Bash(bd list *)",
+      "Bash(bd ready *)",
+      "Bash(bd show *)",
+      "Bash(git mv *)",
+      "Bash(mkdir -p /tmp/check)",
+      "Bash(git stash *)",
+      "Bash(unzip -l \"C:\\\\Code\\\\vaani\\\\kickbacks-v2.vsix\")",
+      "Bash(unzip -p kickbacks-v2.vsix extension.vsixmanifest)",
+      "Bash(unzip -p kickbacks-v2.vsix '[Content_Types].xml')",
+      "Bash(bd create *)",
+      "Bash(npx tsx *)",
+      "Bash(npx eslint *)",
+      "WebSearch",
+      "WebFetch(domain:clerk.com)",
+      "WebFetch(domain:deeo.studio)",
+      "Bash(git *)",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0\" \"https://deeo.studio/404?via=404sdesign\")",
+      "Bash(curl -s -H \"User-Agent: Mozilla/5.0\" \"https://deeo.studio/404\")",
+      "WebFetch(domain:docs.browser-use.com)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(echo \"push_exit=$?\")",
+      "Bash(echo \"tsc_exit=$?\")",
+      "Bash(npx tsc *)",
+      "Bash(echo \"exit=$?\")"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "shadcn"
+  ]
 }

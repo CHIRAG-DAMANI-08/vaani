@@ -164,13 +164,14 @@ export function BetaApplicationsTable() {
         {/* Mobile Cards */}
         <div className="lg:hidden space-y-3 p-4">
           {applications.map((app) => (
-            <BetaApplicationRow
-              key={app._id}
-              application={app}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              isProcessing={processingId === app._id}
-            />
+            <div key={app._id}>
+               <BetaApplicationRow
+                application={app}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                isProcessing={processingId === app._id}
+              />
+            </div>
           ))}
         </div>
       </div>
