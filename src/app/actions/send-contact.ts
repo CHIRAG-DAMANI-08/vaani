@@ -1,10 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import { Resend } from "resend";
 import { logger } from "@/lib/logger";
 import { rateLimit } from "@/lib/rate-limit";
 import { CONTACT_EMAIL } from "@/lib/legal/constants";
+import { sendEmail } from "@/lib/email";
 
 const schema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
@@ -12,10 +12,6 @@ const schema = z.object({
   topic: z.string().trim().min(1).max(120),
   message: z.string().trim().min(10).max(5000),
 });
-
-const resendApiKey = process.env.RESEND_API_KEY;
-const resendFrom = process.env.RESEND_FROM_EMAIL ?? "Vaani <onboarding@resend.dev>";
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 export type ContactResponse =
   | { ok: true; state: "success"; message: "Thanks — your message is on its way." }
@@ -52,28 +48,25 @@ export async function sendContact(
     };
   }
 
-  if (!resend) {
-    logger.warn({ email }, "Contact send skipped: RESEND_API_KEY not configured");
-    return { ok: true, state: "success", message: "Thanks — your message is on its way." };
-  }
+  const { name, email: to, topic, message } = parsed.data;
+  const html = [
+    `<p><strong>From:</strong> ${name ? `${esc(name)} <${esc(to)}>` : esc(to)}</p>`,
+    `<p><strong>Subject:</strong> ${esc(topic)}</p>`,
+    `<p><strong>Message:</strong></p>`,
+    `<p>${esc(message).replace(/\n/g, "<br/>")}</p>`,
+  ].join("");
 
-  try {
-    const { name, email: to, topic, message } = parsed.data;
-    await resend.emails.send({
-      from: resendFrom,
-      to: CONTACT_EMAIL,
-      replyTo: to,
-      subject: `[Vaani contact] ${esc(topic)}`,
-      html: [
-        `<p><strong>From:</strong> ${name ? `${esc(name)} <${esc(to)}>` : esc(to)}</p>`,
-        `<p><strong>Subject:</strong> ${esc(topic)}</p>`,
-        `<p><strong>Message:</strong></p>`,
-        `<p>${esc(message).replace(/\n/g, "<br/>")}</p>`,
-      ].join(""),
-    });
+  const emailResult = await sendEmail({
+    to: CONTACT_EMAIL,
+    replyTo: to,
+    subject: `[Vaani contact] ${esc(topic)}`,
+    html,
+  });
+
+  if (emailResult.success) {
     return { ok: true, state: "success", message: "Thanks — your message is on its way." };
-  } catch (error) {
-    logger.error({ error }, "Contact send failed");
+  } else {
+    logger.error({ error: emailResult.error }, "Contact send failed");
     return { ok: false, state: "server_error", message: "Something went wrong. Please try again." };
   }
 }

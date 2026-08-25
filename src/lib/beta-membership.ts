@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { connectToDatabase } from "@/lib/mongodb";
 import { BetaMembership } from "@/lib/models/beta-membership";
 import { logger } from "@/lib/logger";
+import { isAdmin } from "@/lib/admin";
 
 /**
  * Dashboard layout guard. Returns an approved membership for the signed-in
@@ -20,6 +21,9 @@ import { logger } from "@/lib/logger";
 export async function requireMembershipForLayout() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
+
+  // ponytail: Admins bypass beta membership checks entirely
+  if (await isAdmin()) return { status: "approved", applicationEmail: "admin" } as any;
 
   await connectToDatabase();
 
