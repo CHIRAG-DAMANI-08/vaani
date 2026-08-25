@@ -4,24 +4,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/lib/models/user";
 import { rateLimit } from "@/lib/rate-limit";
 import { validateCSRF } from "@/lib/csrf";
-import crypto from "crypto";
-
-// Matches Sprint 3 implementation
-function encryptPassword(plaintext: string): string {
-  const keyHex = process.env.ENCRYPTION_KEY;
-  if (!keyHex || keyHex.length !== 64) {
-    throw new Error("ENCRYPTION_KEY is missing or invalid");
-  }
-  const key = Buffer.from(keyHex, "hex");
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-  
-  let ciphertext = cipher.update(plaintext, "utf8");
-  ciphertext = Buffer.concat([ciphertext, cipher.final()]);
-  const authTag = cipher.getAuthTag();
-  
-  return `${iv.toString("base64")}:${authTag.toString("base64")}:${ciphertext.toString("base64")}`;
-}
+import { encryptValue } from "@/lib/encryption";
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -43,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   // CSRF validation
-  const csrfValid = await validateCSRF(request);
+  const csrfValid = await validateCSRF(request, userId);
   if (!csrfValid) {
     return NextResponse.json({ error: "FORBIDDEN", message: "CSRF token mismatch." }, { status: 403 });
   }
@@ -100,7 +83,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const obsPasswordEnc = password.length > 0 ? encryptPassword(password) : null;
+    const obsPasswordEnc = password.length > 0 ? encryptValue(password) : null;
 
     await connectToDatabase();
     await User.findOneAndUpdate(
@@ -141,7 +124,7 @@ export async function DELETE(request: Request) {
   }
 
   // CSRF validation
-  const csrfValid = await validateCSRF(request);
+  const csrfValid = await validateCSRF(request, userId);
   if (!csrfValid) {
     return NextResponse.json({ error: "FORBIDDEN", message: "CSRF token mismatch." }, { status: 403 });
   }

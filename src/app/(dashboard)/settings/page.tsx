@@ -1,20 +1,27 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  Eye,
-  EyeOff,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react";
+import {
   Check,
-  Loader2,
-  ExternalLink,
-  AlertCircle,
-  Trash2,
-  RefreshCw,
-  KeyRound,
-  ShieldAlert,
-  X,
-} from "lucide-react";
+  SpinnerGap,
+  ArrowSquareOut,
+  WarningCircle,
+  Trash,
+  ArrowClockwise,
+  Key,
+  ShieldWarning,
+} from "@phosphor-icons/react";
 import { useCSRF } from "@/lib/use-csrf";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { OBSConnectionSection } from "./OBSConnectionSection";
 import { StreamSettingsSection } from "./StreamSettingsSection";
 import { TTSSettingsSection } from "./TTSSettingsSection";
@@ -61,7 +68,6 @@ export default function SettingsPage() {
 
   // Key input
   const [newKey, setNewKey] = useState("");
-  const [showKey, setShowKey] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -151,9 +157,8 @@ export default function SettingsPage() {
           setSectionState("view");
           setActionState("idle");
           setNewKey("");
-          setShowKey(false);
           fetchKeyStatus();
-        }, 1000);
+        }, 2500);
         return;
       }
 
@@ -210,7 +215,6 @@ export default function SettingsPage() {
     setActionState("idle");
     setErrorCode(null);
     setNewKey("");
-    setShowKey(false);
     setCountdown(0);
   };
 
@@ -242,7 +246,7 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between px-8 pt-7 pb-5 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-[12px] bg-[#FFF2E5] flex items-center justify-center">
-              <KeyRound className="w-5 h-5 text-[#F5821F]" />
+              <Key className="w-5 h-5 text-[#F5821F]" weight="bold" />
             </div>
             <div>
               <h2 className="text-[16px] font-syne font-bold text-gray-900">
@@ -259,14 +263,14 @@ export default function SettingsPage() {
             rel="noopener noreferrer"
             className="text-[12px] font-dm-sans font-medium text-[#F5821F] hover:text-[#E8690A] inline-flex items-center gap-1 transition-colors"
           >
-            Get keys <ExternalLink className="w-3 h-3" />
+            Get keys <ArrowSquareOut className="w-3 h-3" weight="bold" />
           </a>
         </div>
 
         <div className="px-8 py-6">
           {loading ? (
             <div className="flex items-center gap-3 py-4">
-              <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+              <SpinnerGap className="w-5 h-5 text-gray-400 animate-spin" weight="bold" />
               <p className="text-[13px] text-gray-400 font-dm-sans">
                 Checking key status...
               </p>
@@ -292,48 +296,51 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex gap-3">
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={ArrowClockwise}
                   onClick={() => {
                     setSectionState("edit");
                     setNewKey("");
                     setErrorCode(null);
                     setTimeout(() => inputRef.current?.focus(), 100);
                   }}
-                  className="px-5 py-2.5 rounded-[14px] text-[13px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100 hover:shadow-sm active:scale-[0.98] transition-all flex items-center gap-2"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
                   Update key
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  icon={Trash}
                   onClick={() => setShowRemoveDialog(true)}
-                  className="px-5 py-2.5 rounded-[14px] text-[13px] font-semibold text-[#EF4444] bg-[#FEF2F2] border border-[#FEE2E2] hover:bg-[#FEE2E2] active:scale-[0.98] transition-all flex items-center gap-2"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
                   Remove key
-                </button>
+                </Button>
               </div>
             </div>
           ) : !keyStatus?.connected && sectionState === "view" ? (
             /* ── State B: No Key Connected ── */
             <div>
               <div className="flex items-center gap-3 mb-4 p-4 rounded-[16px] bg-[#FFFBEB] border border-[#FDE68A]/50">
-                <ShieldAlert className="w-5 h-5 text-[#F59E0B] shrink-0" />
+                <ShieldWarning className="w-5 h-5 text-[#F59E0B] shrink-0" weight="bold" />
                 <p className="text-[13px] font-dm-sans text-[#92400E]">
                   No API key connected. Vaani cannot translate your streams
                   without a Sarvam API key.
                 </p>
               </div>
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 onClick={() => {
                   setSectionState("add");
                   setNewKey("");
                   setErrorCode(null);
                   setTimeout(() => inputRef.current?.focus(), 100);
                 }}
-                className="px-6 py-3 rounded-[16px] text-[14px] font-semibold bg-gray-900 text-white hover:bg-gray-800 shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:scale-[0.98] transition-all"
               >
                 Add key
-              </button>
+              </Button>
             </div>
           ) : (
             /* ── State C: Edit / Add Mode ── */
@@ -349,12 +356,20 @@ export default function SettingsPage() {
               )}
 
               {/* New key input */}
-              <div className="relative mb-2">
-                <input
+              <div className="mb-2">
+                <Input
                   ref={inputRef}
-                  type={showKey ? "text" : "password"}
+                  label="Sarvam API key"
+                  type="password"
+                  required
+                  error={errorCode ? ERROR_MESSAGES[errorCode] : undefined}
+                  hint={
+                    errorCode !== "RATE_LIMIT_EXCEEDED"
+                      ? "Used for speech-to-text, translation, and text-to-speech"
+                      : undefined
+                  }
                   value={newKey}
-                  onChange={(e) => {
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
                     setNewKey(e.target.value);
                     if (errorCode) {
                       setErrorCode(null);
@@ -362,7 +377,7 @@ export default function SettingsPage() {
                     }
                   }}
                   onPaste={handlePaste}
-                  onKeyDown={(e) => {
+                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                     if (e.key === "Enter") handleSaveKey();
                   }}
                   placeholder={
@@ -375,70 +390,32 @@ export default function SettingsPage() {
                     actionState === "success" ||
                     countdown > 0
                   }
-                  className={`w-full rounded-[16px] border px-4 py-3.5 pr-12 text-[13px] text-gray-900 bg-gray-50/50 outline-none transition-all duration-200 placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-[#F5821F]/15 ${
-                    actionState === "error"
-                      ? "border-[#EF4444] focus:border-[#EF4444]"
-                      : actionState === "success"
-                      ? "border-[#10B981] focus:border-[#10B981]"
-                      : "border-gray-200 focus:border-[#F5821F]/40"
-                  }`}
                   style={{ fontFamily: "var(--font-jetbrains)" }}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
-                  tabIndex={-1}
-                >
-                  {actionState === "success" ? (
-                    <Check className="w-4 h-4 text-[#10B981]" />
-                  ) : showKey ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
               </div>
 
-              {/* Error area */}
-              <div className="h-[36px] flex items-start mb-2">
-                {errorCode && (
-                  <div className="flex items-start gap-2 animate-[fade-in_150ms_ease]">
-                    <AlertCircle className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
-                    <p className="text-[12px] font-dm-sans text-[#EF4444] leading-[1.5]">
-                      {ERROR_MESSAGES[errorCode] || "Something went wrong."}
-                      {errorCode === "RATE_LIMIT_EXCEEDED" &&
-                        countdown > 0 && (
-                          <span className="font-mono font-bold ml-1">
-                            {formatCountdown(countdown)}
-                          </span>
-                        )}
-                    </p>
-                  </div>
-                )}
-              </div>
+              {/* Error area — countdown supplement for rate limit */}
+              {errorCode === "RATE_LIMIT_EXCEEDED" && countdown > 0 && (
+                <div className="h-[36px] flex items-center mb-2 animate-[fade-in_150ms_ease]">
+                  <p className="text-[12px] font-dm-sans text-[#EF4444]">
+                    Try again in{" "}
+                    <span className="font-mono font-bold ml-1">
+                      {formatCountdown(countdown)}
+                    </span>
+                  </p>
+                </div>
+              )}
 
               {/* Action buttons */}
               <div className="flex gap-3">
-                <button
-                  onClick={handleSaveKey}
+                <Button
+                  variant="primary"
+                  size="lg"
+                  loading={actionState === "loading"}
                   disabled={!canSubmit}
-                  className={`px-6 py-3 rounded-[16px] text-[14px] font-semibold transition-all duration-300 flex items-center gap-2 ${
-                    actionState === "success"
-                      ? "bg-[#10B981] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
-                      : actionState === "loading"
-                      ? "bg-gray-900 text-white opacity-80"
-                      : canSubmit
-                      ? "bg-gray-900 text-white hover:bg-gray-800 shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:scale-[0.98]"
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  }`}
+                  icon={actionState === "success" ? Check : undefined}
+                  onClick={handleSaveKey}
                 >
-                  {actionState === "loading" && (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  )}
-                  {actionState === "success" && (
-                    <Check className="w-4 h-4" />
-                  )}
                   {actionState === "loading"
                     ? "Validating..."
                     : actionState === "success"
@@ -446,13 +423,14 @@ export default function SettingsPage() {
                     : sectionState === "edit"
                     ? "Save new key"
                     : "Validate and save"}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="md"
                   onClick={handleCancel}
-                  className="px-5 py-2.5 rounded-[14px] text-[14px] font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -461,7 +439,7 @@ export default function SettingsPage() {
 
           <OBSConnectionSection csrfToken={csrfToken || ""} refreshToken={refreshToken} />
         </div>
-        
+
         <div className="space-y-6">
           <StreamSettingsSection />
           <TTSSettingsSection />
@@ -469,61 +447,48 @@ export default function SettingsPage() {
       </div>
 
       {/* ── Remove Key Confirmation Dialog ── */}
-      {showRemoveDialog && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[8px] animate-[fade-in_150ms_ease]" />
-          <div className="fixed z-[60] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[420px] bg-white/95 backdrop-blur-xl border border-white shadow-[0_32px_80px_rgba(0,0,0,0.12)] rounded-[28px] p-8">
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-[20px] font-syne font-bold text-gray-900">
-                Remove API key?
-              </h3>
-              <button
-                onClick={() => {
-                  setShowRemoveDialog(false);
-                  setActionState("idle");
-                }}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <Modal
+        open={showRemoveDialog}
+        onClose={() => {
+          setShowRemoveDialog(false);
+          setActionState("idle");
+        }}
+        title="Remove API key?"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={() => {
+                setShowRemoveDialog(false);
+                setActionState("idle");
+              }}
+            >
+              Keep key
+            </Button>
+            <Button
+              variant="danger"
+              size="md"
+              loading={actionState === "loading"}
+              onClick={handleRemoveKey}
+            >
+              Remove key
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[14px] font-dm-sans leading-[1.6] mb-4">
+          Vaani will no longer be able to translate your streams. You can
+          reconnect a key at any time from Settings.
+        </p>
 
-            <p className="text-[14px] font-dm-sans text-gray-500 leading-[1.6] mb-4">
-              Vaani will no longer be able to translate your streams. You can
-              reconnect a key at any time from Settings.
-            </p>
-
-            <div className="flex items-center gap-2 p-3 rounded-[12px] bg-[#FFFBEB] border border-[#FDE68A]/50 mb-7">
-              <AlertCircle className="w-4 h-4 text-[#F59E0B] shrink-0" />
-              <p className="text-[12px] font-dm-sans text-[#92400E]">
-                Any active streams will stop immediately.
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowRemoveDialog(false);
-                  setActionState("idle");
-                }}
-                className="px-5 py-2.5 rounded-[14px] text-[14px] font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all"
-              >
-                Keep key
-              </button>
-              <button
-                onClick={handleRemoveKey}
-                disabled={actionState === "loading"}
-                className="px-6 py-3 rounded-[16px] text-[14px] font-semibold bg-[#EF4444] text-white hover:bg-[#DC2626] shadow-[0_4px_12px_rgba(239,68,68,0.25)] active:scale-[0.98] transition-all flex items-center gap-2"
-              >
-                {actionState === "loading" && (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                )}
-                Remove key
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+        <div className="flex items-center gap-2 p-3 rounded-[12px] bg-[#FFFBEB] border border-[#FDE68A]/50">
+          <WarningCircle className="w-4 h-4 text-[#F59E0B] shrink-0" weight="bold" />
+          <p className="text-[12px] font-dm-sans text-[#92400E]">
+            Any active streams will stop immediately.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }

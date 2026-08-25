@@ -8,21 +8,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton, useUser } from "@clerk/nextjs";
 import {
-  LayoutDashboard,
+  House,
   Radio,
-  Settings,
+  Gear,
   Play,
-  Square,
-  Menu,
+  Stop,
+  List,
   X,
   Bell,
-  Search,
-  AlertTriangle,
-} from "lucide-react";
+  MagnifyingGlass,
+  Warning,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Dashboard", href: "/dashboard", icon: House },
   { label: "Channels", href: "/channels", icon: Radio },
 ];
 
@@ -186,7 +186,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     }`}
                   >
                     <div className={`flex items-center justify-center p-2 rounded-[12px] transition-colors ${isActive ? 'bg-[#FFF2E5] text-[#F5821F]' : 'bg-transparent text-gray-400'}`}>
-                       <item.icon className="w-5 h-5" />
+                       <item.icon className="w-5 h-5" weight="bold" />
                     </div>
                     {item.label}
                   </Link>

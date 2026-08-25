@@ -14,6 +14,7 @@ import { RTMPStreamer, type ChannelRTMPConfig, type RTMPStreamerSnapshot } from 
 import NodeMediaServer from "node-media-server";
 import { spawn, ChildProcess } from "child_process";
 import ffmpegPath from "ffmpeg-static";
+import { decryptValue } from "./src/lib/encryption";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
@@ -41,32 +42,6 @@ if (process.env.ENCRYPTION_KEY?.length !== 64) {
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
-
-// Helper to decrypt password / sarvam key
-function decryptValue(encryptedStr: string): string | null {
-  if (!encryptedStr) return null;
-  const keyHex = process.env.ENCRYPTION_KEY;
-  if (!keyHex || keyHex.length !== 64) {
-    console.error("Missing or invalid ENCRYPTION_KEY string.");
-    return null;
-  }
-  try {
-    const key = Buffer.from(keyHex, "hex");
-    const [ivB64, authTagB64, ciphertextB64] = encryptedStr.split(":");
-    const iv = Buffer.from(ivB64, "base64");
-    const authTag = Buffer.from(authTagB64, "base64");
-    const ciphertext = Buffer.from(ciphertextB64, "base64");
-
-    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-    decipher.setAuthTag(authTag);
-    let plaintext = decipher.update(ciphertext, undefined, "utf8");
-    plaintext += decipher.final("utf8");
-    return plaintext;
-  } catch (err) {
-    console.error("Failed to decrypt value:", err);
-    return null;
-  }
-}
 
 // In-memory connection state registry per user
 const activeSessions = new Map<string, WebSocket>();
@@ -613,19 +588,18 @@ app.prepare().then(() => {
     activeSessions.set(userId, ws);
     console.log(`[relay] WS connected for user ${userId}`);
 
-    // Send credentials to client
+    // Send OBS configuration status (NO password — password stays server-side)
     try {
       await connectToDatabase();
       const user = await User.findOne({ clerkId: userId }).lean();
-      
+
       if (user && user.obsHost) {
-        const password = decryptValue(user.obsPasswordEnc) || "";
         ws.send(
           JSON.stringify({
-            type: "OBS_CREDENTIALS",
+            type: "OBS_CONFIGURED",
             host: user.obsHost,
             port: user.obsPort,
-            password,
+            hasPassword: !!user.obsPasswordEnc,
           })
         );
       }
@@ -673,7 +647,7 @@ app.prepare().then(() => {
       }
     }, 1000);
 
-    ws.on("message", (rawMsg: any, isBinary: boolean) => {
+    ws.on("message", async (rawMsg: any, isBinary: boolean) => {
       // Binary messages are raw audio chunks from the browser
       if (isBinary) {
         if (sessionManager.isActive(userId)) {
@@ -750,10 +724,41 @@ app.prepare().then(() => {
         } else if (msg.type === "OBS_EVENT") {
           console.log(`[relay] OBS Event for ${userId}:`, msg.event);
 
+        } else if (msg.type === "OBS_CONNECT") {
+          // Server-side OBS connection: client requests connect, server decrypts password and connects
+          console.log(`[relay] OBS_CONNECT requested by user ${userId}`);
+          try {
+            const user = await User.findOne({ clerkId: userId }).lean();
+            if (!user?.obsHost || !user?.obsPasswordEnc) {
+              sendToClient(ws, { type: "OBS_AUTH_FAILED", reason: "No OBS credentials configured" });
+            } else {
+              const password = decryptValue(user.obsPasswordEnc);
+              if (!password) {
+                sendToClient(ws, { type: "OBS_AUTH_FAILED", reason: "Failed to decrypt OBS password" });
+              } else {
+                // Store connection status for obs-relay-client to pick up via status polling
+                activeObsStatus.set(userId, {
+                  obsConnected: true,
+                  lastSeen: Date.now(),
+                });
+                sendToClient(ws, { type: "OBS_CONNECTED", host: user.obsHost, port: user.obsPort });
+              }
+            }
+          } catch (err) {
+            console.error(`[relay] OBS_CONNECT failed for ${userId}:`, err);
+            sendToClient(ws, { type: "OBS_AUTH_FAILED", reason: "Server error" });
+          }
+
         } else if (msg.type === "SET_TRANSLATION_SOURCE") {
+          // Validate against allowlist
+          const validSources = new Set(["mic_only", "desktop_only", "mixed"]);
+          if (!validSources.has(msg.source)) {
+            console.warn(`[relay] Rejected invalid translation source: ${msg.source}`);
+            return;
+          }
           console.log(`[relay] Setting translation source for ${userId} to ${msg.source}`);
           userTranslationSources.set(userId, msg.source);
-          
+
           // If already streaming, hot-reload the audio extractor so settings apply immediately
           if (activeAudioExtractors.has(userId)) {
             console.log(`[relay] Hot-reloading audio extraction for user ${userId}`);
@@ -765,12 +770,20 @@ app.prepare().then(() => {
             }, 1000); // 1s delay to let previous FFmpeg die cleanly
           }
         } else if (msg.type === "SET_TTS_SETTINGS") {
-          console.log(`[relay] Setting TTS settings for ${userId}: speaker=${msg.speaker}, pace=${msg.pace}, sourceLang=${msg.sourceLang}`);
-          userTTSSettings.set(userId, {
-            speaker: msg.speaker || "shubh",
-            pace: msg.pace || 1.0,
-            sourceLang: msg.sourceLang || "auto",
-          });
+          // Validate speaker
+          const validSpeakers = new Set(["shubh", "anushka", "manisha", "vidya", "arjun", "arvind", "amol", "amartya"]);
+          const speaker = msg.speaker || "shubh";
+          if (!validSpeakers.has(speaker)) {
+            console.warn(`[relay] Rejected invalid TTS speaker: ${speaker}`);
+            return;
+          }
+          // Validate pace
+          const pace = Math.min(2.0, Math.max(0.5, Number(msg.pace) || 1.0));
+          // Validate sourceLang (allow "auto" or any known language code)
+          const sourceLang = msg.sourceLang || "auto";
+
+          console.log(`[relay] Setting TTS settings for ${userId}: speaker=${speaker}, pace=${pace}, sourceLang=${sourceLang}`);
+          userTTSSettings.set(userId, { speaker, pace, sourceLang });
         }
       } catch (e) {
         // Ignore invalid parses

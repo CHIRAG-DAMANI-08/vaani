@@ -4,15 +4,19 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Plus,
   Pencil,
-  Trash2,
-  Eye,
-  EyeOff,
+  Trash,
   Check,
   X,
-  Loader2,
+  SpinnerGap,
   Radio,
-  ExternalLink,
-} from "lucide-react";
+  ArrowSquareOut,
+} from "@phosphor-icons/react";
+import { useCSRF } from "@/lib/use-csrf";
+import { Input } from "../../../components/ui/Input";
+import { Button } from "../../../components/ui/Button";
+import { Modal } from "../../../components/ui/Modal";
+import { IconButton } from "../../../components/ui/IconButton";
+import { Toggle } from "../../../components/ui/Toggle";
 
 type ChannelData = {
   id: string;
@@ -27,6 +31,7 @@ type ChannelData = {
 };
 
 export default function ChannelsPage() {
+  const { csrfToken } = useCSRF();
   const [channels, setChannels] = useState<ChannelData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +39,7 @@ export default function ChannelsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editRtmpUrl, setEditRtmpUrl] = useState("");
   const [editRtmpKey, setEditRtmpKey] = useState("");
-  const [showRtmpKey, setShowRtmpKey] = useState(false);
+  const [editEnabled, setEditEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
@@ -61,12 +66,15 @@ export default function ChannelsPage() {
     try {
       const res = await fetch("/api/channels", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken || "",
+        },
         body: JSON.stringify({
           languageId,
           rtmpUrl: editRtmpUrl || null,
           rtmpKey: editRtmpKey || null,
-          enabled: !!(editRtmpKey),
+          enabled: editEnabled,
         }),
       });
 
@@ -74,7 +82,7 @@ export default function ChannelsPage() {
         setEditingId(null);
         setEditRtmpUrl("");
         setEditRtmpKey("");
-        setShowRtmpKey(false);
+        setEditEnabled(false);
         fetchChannels();
       }
     } catch (err) {
@@ -88,7 +96,10 @@ export default function ChannelsPage() {
     try {
       await fetch("/api/channels", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken || "",
+        },
         body: JSON.stringify({
           languageId: ch.id,
           enabled: !ch.enabled,
@@ -104,7 +115,10 @@ export default function ChannelsPage() {
     try {
       await fetch("/api/channels", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken || "",
+        },
         body: JSON.stringify({ languageId }),
       });
       setDeleteConfirm(null);
@@ -118,14 +132,14 @@ export default function ChannelsPage() {
     setEditingId(ch.id);
     setEditRtmpUrl(ch.rtmpUrl || "");
     setEditRtmpKey("");
-    setShowRtmpKey(false);
+    setEditEnabled(ch.enabled);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditRtmpUrl("");
     setEditRtmpKey("");
-    setShowRtmpKey(false);
+    setEditEnabled(false);
   };
 
   return (
@@ -145,7 +159,7 @@ export default function ChannelsPage() {
       {/* Channels List */}
       {loading ? (
         <div className="flex items-center gap-3 py-12 justify-center">
-          <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+          <SpinnerGap className="w-5 h-5 text-gray-400 animate-spin" weight="bold" />
           <p className="text-[13px] text-gray-400 font-dm-sans">
             Loading channels...
           </p>
@@ -213,7 +227,7 @@ export default function ChannelsPage() {
                   {ch.configured && !isEditing && (
                     <div>
                       <div className="flex items-center gap-2 mb-4 p-3 rounded-[12px] bg-gray-50/80">
-                        <Radio className="w-4 h-4 text-gray-400 shrink-0" />
+                        <Radio className="w-4 h-4 text-gray-400 shrink-0" weight="bold" />
                         <p
                           className="text-[12px] text-gray-500 truncate"
                           style={{ fontFamily: "var(--font-jetbrains)" }}
@@ -227,60 +241,57 @@ export default function ChannelsPage() {
 
                       <div className="flex items-center gap-3">
                         {/* Toggle */}
-                        <button
-                          onClick={() => handleToggle(ch)}
-                          className={`w-[40px] h-[22px] rounded-full relative transition-colors duration-200 ${
-                            ch.enabled ? "bg-[#10B981]" : "bg-gray-200"
-                          }`}
-                        >
-                          <div
-                            className={`absolute top-[2px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200 ${
-                              ch.enabled ? "left-[20px]" : "left-[2px]"
-                            }`}
-                          />
-                        </button>
-                        <span className="text-[12px] font-dm-sans text-gray-500">
-                          {ch.enabled ? "Enabled" : "Disabled"}
-                        </span>
+                        <Toggle
+                          checked={ch.enabled}
+                          onChange={() => handleToggle(ch)}
+                          label="Enabled"
+                        />
 
                         <div className="ml-auto flex gap-2">
-                          <button
+                          <IconButton
+                            icon={Pencil}
+                            ariaLabel={`Edit ${ch.name} channel`}
                             onClick={() => startEdit(ch)}
-                            className="p-2 rounded-[10px] text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
+                          />
+                          <IconButton
+                            icon={Trash}
+                            ariaLabel={`Delete ${ch.name} channel`}
+                            variant="danger"
                             onClick={() => setDeleteConfirm(ch.id)}
-                            className="p-2 rounded-[10px] text-gray-400 hover:text-[#EF4444] hover:bg-[#FEF2F2] transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          />
                         </div>
                       </div>
 
-                      {/* Delete confirmation inline */}
-                      {isDeleting && (
-                        <div className="mt-3 p-3 rounded-[12px] bg-[#FEF2F2] border border-[#FEE2E2] animate-[fade-in_150ms_ease]">
-                          <p className="text-[12px] font-dm-sans text-[#991B1B] mb-2">
-                            Remove this channel? The RTMP key will be deleted.
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleDelete(ch.id)}
-                              className="px-3 py-1.5 rounded-[10px] text-[12px] font-semibold bg-[#EF4444] text-white hover:bg-[#DC2626] transition-colors"
-                            >
-                              Remove
-                            </button>
-                            <button
+                      {/* Delete confirmation modal */}
+                      <Modal
+                        open={isDeleting}
+                        onClose={() => setDeleteConfirm(null)}
+                        title="Remove channel"
+                        description="The RTMP key will be deleted for this channel."
+                        footer={
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => setDeleteConfirm(null)}
-                              className="px-3 py-1.5 rounded-[10px] text-[12px] font-medium text-gray-500 hover:bg-gray-100 transition-colors"
                             >
                               Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleDelete(ch.id)}
+                            >
+                              Remove
+                            </Button>
+                          </>
+                        }
+                      >
+                        <p className="text-[13px] font-dm-sans text-gray-600">
+                          Are you sure you want to remove <strong>{ch.name}</strong>?
+                          The RTMP key will be permanently deleted.
+                        </p>
+                      </Modal>
                     </div>
                   )}
 
@@ -292,7 +303,7 @@ export default function ChannelsPage() {
                           onClick={() => startEdit(ch)}
                           className="w-full p-4 rounded-[16px] border-2 border-dashed border-gray-200 hover:border-[#F5821F]/40 text-gray-400 hover:text-[#F5821F] transition-all group flex items-center justify-center gap-2"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-4 h-4" weight="bold" />
                           <span className="text-[13px] font-dm-sans font-medium">
                             Configure channel
                           </span>
@@ -302,51 +313,38 @@ export default function ChannelsPage() {
                       {isEditing && (
                         <div className="space-y-3 animate-[fade-slide-up_200ms_ease-out_forwards] opacity-0">
                           {/* RTMP URL */}
-                          <div>
-                            <label className="text-[12px] font-dm-sans font-semibold text-gray-600 mb-1.5 block">
-                              RTMP Server URL
-                            </label>
-                            <input
-                              type="text"
-                              value={editRtmpUrl}
-                              onChange={(e) => setEditRtmpUrl(e.target.value)}
-                              placeholder="rtmp://a.rtmp.youtube.com/live2"
-                              className="w-full rounded-[12px] border border-gray-200 bg-gray-50/50 px-3.5 py-3 text-[13px] text-gray-900 outline-none placeholder:text-gray-400 focus:border-[#F5821F]/40 focus:ring-2 focus:ring-[#F5821F]/10 transition-all"
-                            />
-                          </div>
+                          <Input
+                            label="RTMP URL"
+                            value={editRtmpUrl}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditRtmpUrl(e.target.value)}
+                            placeholder="rtmp://a.rtmp.youtube.com/live2"
+                          />
 
                           {/* RTMP Key */}
-                          <div>
-                            <label className="text-[12px] font-dm-sans font-semibold text-gray-600 mb-1.5 block">
-                              Stream Key
-                            </label>
-                            <div className="relative">
-                              <input
-                                type={showRtmpKey ? "text" : "password"}
-                                value={editRtmpKey}
-                                onChange={(e) => setEditRtmpKey(e.target.value)}
-                                placeholder={
-                                  ch.hasRtmpKey
-                                    ? "Enter new key to replace..."
-                                    : "Paste your stream key..."
-                                }
-                                className="w-full rounded-[12px] border border-gray-200 bg-gray-50/50 px-3.5 py-3 pr-10 text-[13px] text-gray-900 outline-none placeholder:text-gray-400 focus:border-[#F5821F]/40 focus:ring-2 focus:ring-[#F5821F]/10 transition-all"
-                                style={{ fontFamily: "var(--font-jetbrains)" }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowRtmpKey(!showRtmpKey)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                tabIndex={-1}
-                              >
-                                {showRtmpKey ? (
-                                  <EyeOff className="w-4 h-4" />
-                                ) : (
-                                  <Eye className="w-4 h-4" />
-                                )}
-                              </button>
-                            </div>
-                          </div>
+                          <Input
+                            label="Stream key"
+                            type="password"
+                            value={editRtmpKey}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditRtmpKey(e.target.value)}
+                            placeholder={
+                              ch.hasRtmpKey
+                                ? "Enter new key to replace..."
+                                : "Paste your stream key..."
+                            }
+                            hint={
+                              ch.hasRtmpKey && !editRtmpKey
+                                ? "Stream key set (last 4: XXXX)"
+                                : undefined
+                            }
+                          />
+
+                          {/* Enabled toggle */}
+                          <Toggle
+                            checked={editEnabled}
+                            onChange={setEditEnabled}
+                            label="Enabled"
+                            description="Enable this channel for streaming"
+                          />
 
                           {/* Help link */}
                           <a
@@ -356,34 +354,29 @@ export default function ChannelsPage() {
                             className="text-[11px] font-dm-sans text-[#F5821F] hover:text-[#E8690A] inline-flex items-center gap-1 transition-colors"
                           >
                             Where to find your stream key{" "}
-                            <ExternalLink className="w-3 h-3" />
+                            <ArrowSquareOut className="w-3 h-3" weight="bold" />
                           </a>
 
                           {/* Action buttons */}
                           <div className="flex gap-2 pt-1">
-                            <button
+                            <Button
+                              variant="primary"
+                              size="md"
+                              loading={saving}
+                              disabled={!editRtmpKey && !ch.hasRtmpKey}
+                              icon={Check}
                               onClick={() => handleSave(ch.id)}
-                              disabled={saving || (!editRtmpKey && !ch.hasRtmpKey)}
-                              className={`px-4 py-2.5 rounded-[12px] text-[13px] font-semibold transition-all flex items-center gap-2 ${
-                                saving || (!editRtmpKey && !ch.hasRtmpKey)
-                                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                  : "bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.98] shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
-                              }`}
                             >
-                              {saving ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Check className="w-4 h-4" />
-                              )}
                               {saving ? "Saving..." : "Save"}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="md"
+                              icon={X}
                               onClick={cancelEdit}
-                              className="px-4 py-2.5 rounded-[12px] text-[13px] font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all flex items-center gap-2"
                             >
-                              <X className="w-4 h-4" />
                               Cancel
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}

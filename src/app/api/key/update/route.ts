@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   // 2. CSRF check
-  const csrfValid = await validateCSRF(request);
+  const csrfValid = await validateCSRF(request, userId);
   if (!csrfValid) {
     return NextResponse.json(
       { error: "CSRF_INVALID", message: "Something went wrong. Please refresh and try again." },

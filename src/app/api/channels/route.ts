@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Channel, SUPPORTED_LANGUAGES } from "@/lib/models/channel";
+import { validateCSRF } from "@/lib/csrf";
+
+const RTMP_URL_REGEX = /^rtmp(s)?:\/\/[^\s/$.?#][^\s]*$/;
+const RTMP_KEY_REGEX = /^[a-zA-Z0-9_-]{8,200}$/;
 
 /**
  * GET /api/channels
@@ -29,9 +33,8 @@ export async function GET() {
         script: lang.script,
         color: lang.color,
         enabled: saved?.enabled || false,
-        configured: !!(saved?.rtmpKey),
         rtmpUrl: saved?.rtmpUrl || null,
-        hasRtmpKey: !!(saved?.rtmpKey),
+        hasRtmpKey: !!(saved?.rtmpKeyEnc),
         updatedAt: saved?.updatedAt || null,
       };
     });
@@ -57,6 +60,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
+  // CSRF validation
+  if (!(await validateCSRF(request, userId))) {
+    return NextResponse.json({ error: "CSRF_INVALID" }, { status: 403 });
+  }
+
   let body: { languageId?: string; rtmpKey?: string; rtmpUrl?: string; enabled?: boolean };
   try {
     body = await request.json();
@@ -78,6 +86,26 @@ export async function POST(request: Request) {
     );
   }
 
+  // Validate rtmpUrl format
+  if (rtmpUrl !== undefined && rtmpUrl !== null && rtmpUrl !== "") {
+    if (rtmpUrl.length > 500 || !RTMP_URL_REGEX.test(rtmpUrl)) {
+      return NextResponse.json(
+        { error: "INVALID_RTMP_URL", message: "RTMP URL must be a valid rtmp:// or rtmps:// URL (max 500 chars)." },
+        { status: 400 }
+      );
+    }
+  }
+
+  // Validate rtmpKey format
+  if (rtmpKey !== undefined && rtmpKey !== null && rtmpKey !== "") {
+    if (!RTMP_KEY_REGEX.test(rtmpKey)) {
+      return NextResponse.json(
+        { error: "INVALID_RTMP_KEY", message: "RTMP key must be 8-200 characters: letters, numbers, hyphens, underscores." },
+        { status: 400 }
+      );
+    }
+  }
+
   try {
     await connectToDatabase();
 
@@ -88,6 +116,7 @@ export async function POST(request: Request) {
       script: lang.script,
     };
 
+    // rtmpKey is a virtual that auto-encrypts via the model hook
     if (rtmpKey !== undefined) updateData.rtmpKey = rtmpKey || null;
     if (rtmpUrl !== undefined) updateData.rtmpUrl = rtmpUrl || null;
     if (enabled !== undefined) updateData.enabled = enabled;
@@ -108,8 +137,7 @@ export async function POST(request: Request) {
           name: channel.languageName,
           script: channel.script,
           enabled: channel.enabled,
-          configured: !!channel.rtmpKey,
-          hasRtmpKey: !!channel.rtmpKey,
+          hasRtmpKey: !!channel.rtmpKeyEnc,
         },
       },
       { status: 200 }
@@ -132,6 +160,11 @@ export async function DELETE(request: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  // CSRF validation
+  if (!(await validateCSRF(request, userId))) {
+    return NextResponse.json({ error: "CSRF_INVALID" }, { status: 403 });
   }
 
   let body: { languageId?: string };

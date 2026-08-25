@@ -9,7 +9,7 @@ export const WaitlistModal = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "duplicate" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const modalRef = useRef<HTMLDivElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,8 +59,8 @@ export const WaitlistModal = () => {
       
       const response = await joinWaitlist(null, formData);
       
-      if (response.state === "duplicate") {
-        setStatus("duplicate");
+      if (response.state === "rate_limited") {
+        setStatus("error");
       } else if (response.state === "validation_error" || response.state === "server_error") {
         setStatus("error");
       } else if (response.state === "success") {
@@ -182,12 +182,6 @@ export const WaitlistModal = () => {
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex items-start gap-2 text-red-500 bg-red-50 p-3 rounded-xl border border-red-100 text-xs">
                         <AlertCircle size={16} className="shrink-0 mt-0.5" />
                         <p>Something went wrong. Please check your connection and try again.</p>
-                      </motion.div>
-                    )}
-                    {status === "duplicate" && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex items-start gap-2 text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-100 text-xs">
-                        <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                        <p>This email is already on the waitlist. We'll notify you when it's your turn!</p>
                       </motion.div>
                     )}
                   </AnimatePresence>

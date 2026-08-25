@@ -21,12 +21,12 @@ function getEncryptionKey(): Buffer {
 }
 
 /**
- * Encrypt a plaintext API key using AES-256-GCM.
+ * Encrypt any plaintext value using AES-256-GCM.
  * Returns a string in format: base64(iv):base64(authTag):base64(ciphertext)
  *
  * The plaintext is NOT retained after this function returns.
  */
-export function encryptKey(plaintext: string): string {
+export function encryptValue(plaintext: string): string {
   const key = getEncryptionKey();
   const iv = crypto.randomBytes(IV_LENGTH);
 
@@ -49,33 +49,48 @@ export function encryptKey(plaintext: string): string {
 }
 
 /**
- * Decrypt an encrypted API key.
+ * Decrypt an encrypted value.
  * Input format: base64(iv):base64(authTag):base64(ciphertext)
  *
- * Used in Sprint 6+ when making actual Sarvam API calls.
+ * Returns null on failure (invalid format, tampered data, wrong key).
  */
-export function decryptKey(encryptedString: string): string {
-  const key = getEncryptionKey();
-  const parts = encryptedString.split(":");
+export function decryptValue(encryptedString: string): string | null {
+  if (!encryptedString) return null;
+  try {
+    const key = getEncryptionKey();
+    const parts = encryptedString.split(":");
 
-  if (parts.length !== 3) {
+    if (parts.length !== 3) return null;
+
+    const iv = Buffer.from(parts[0], "base64");
+    const authTag = Buffer.from(parts[1], "base64");
+    const ciphertext = Buffer.from(parts[2], "base64");
+
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, {
+      authTagLength: AUTH_TAG_LENGTH,
+    });
+
+    decipher.setAuthTag(authTag);
+
+    const decrypted = Buffer.concat([
+      decipher.update(ciphertext),
+      decipher.final(),
+    ]);
+
+    return decrypted.toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
+/** @deprecated Use encryptValue instead. Kept for backward compatibility. */
+export const encryptKey = encryptValue;
+
+/** @deprecated Use decryptValue instead. Kept for backward compatibility. */
+export function decryptKey(encryptedString: string): string {
+  const result = decryptValue(encryptedString);
+  if (result === null) {
     throw new Error("Invalid encrypted key format.");
   }
-
-  const iv = Buffer.from(parts[0], "base64");
-  const authTag = Buffer.from(parts[1], "base64");
-  const ciphertext = Buffer.from(parts[2], "base64");
-
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, {
-    authTagLength: AUTH_TAG_LENGTH,
-  });
-
-  decipher.setAuthTag(authTag);
-
-  const decrypted = Buffer.concat([
-    decipher.update(ciphertext),
-    decipher.final(),
-  ]);
-
-  return decrypted.toString("utf8");
+  return result;
 }

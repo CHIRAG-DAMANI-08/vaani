@@ -14,9 +14,12 @@ type PoolConfig = {
   windowMs: number;
 };
 
+// When RATE_LIMIT_DEV=1, use short windows for local testing / QA.
+const DEV = process.env.RATE_LIMIT_DEV === "1";
+
 const POOLS: Record<string, PoolConfig> = {
-  "key-mutation": { maxRequests: 5, windowMs: 10 * 1000 }, // 5 per 10 sec (dev — change to 15 min for prod)
-  "key-delete": { maxRequests: 10, windowMs: 10 * 1000 }, // 10 per 10 sec (dev — change to 1 hr for prod)
+  "key-mutation": { maxRequests: 5, windowMs: DEV ? 10 * 1000 : 15 * 60 * 1000 },
+  "key-delete": { maxRequests: 10, windowMs: DEV ? 10 * 1000 : 60 * 60 * 1000 },
 };
 
 // Storage: Map<"userId:pool", timestamp[]>

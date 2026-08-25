@@ -1,8 +1,10 @@
 "use server";
 
 import { z } from "zod";
+import { headers } from "next/headers";
 import { connectToDatabase } from "@/lib/mongodb";
 import { WaitlistEntry } from "@/lib/models/waitlist-entry";
+import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -15,7 +17,7 @@ const schema = z.object({
 
 export type WaitlistResponse =
   | { ok: true; state: "success"; message: "You're on the waitlist." }
-  | { ok: true; state: "duplicate"; message: "You're already on the waitlist." }
+  | { ok: false; state: "rate_limited"; message: "Too many requests. Please try again later." }
   | { ok: false; state: "validation_error"; message: "Enter a valid email." }
   | { ok: false; state: "server_error"; message: "Something went wrong. Please try again." };
 
@@ -23,9 +25,28 @@ export async function joinWaitlist(
   _prevState: WaitlistResponse | null,
   formData: FormData
 ): Promise<WaitlistResponse> {
+  // Rate limit by IP (5 submissions per hour)
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || headersList.get("x-real-ip")
+    || "unknown";
+
+  const rateResult = rateLimit(`waitlist:${ip}`, {
+    maxRequests: 5,
+    windowMs: 60 * 60 * 1000,
+  });
+
+  if (!rateResult.allowed) {
+    return {
+      ok: false,
+      state: "rate_limited",
+      message: "Too many requests. Please try again later.",
+    };
+  }
+
   const emailFieldValue = formData.get("email");
   const nameFieldValue = formData.get("name");
-  
+
   const parsed = schema.safeParse({
     email: typeof emailFieldValue === 'string' ? emailFieldValue : '',
     name: nameFieldValue ? String(nameFieldValue) : undefined,
@@ -52,28 +73,24 @@ export async function joinWaitlist(
       ...parsed.data,
       status: "pending",
     });
-
-    return {
-      ok: true,
-      state: "success",
-      message: "You're on the waitlist.",
-    };
   } catch (error: unknown) {
+    // Duplicate key — treat same as success (prevents email enumeration)
     if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
+      // fall through to success response
+    } else {
+      console.error("Waitlist error:", error);
       return {
-        ok: true,
-        state: "duplicate",
-        message: "You're already on the waitlist.",
+        ok: false,
+        state: "server_error",
+        message: "Something went wrong. Please try again.",
       };
     }
-
-    // Log the actual server error to the console for debugging
-    console.error("Waitlist error:", error);
-    
-    return {
-      ok: false,
-      state: "server_error",
-      message: "Something went wrong. Please try again.",
-    };
   }
+
+  // Always return identical response for both success and duplicate
+  return {
+    ok: true,
+    state: "success",
+    message: "You're on the waitlist.",
+  };
 }

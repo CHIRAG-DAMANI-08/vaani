@@ -1,18 +1,40 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
-import { Radio, Copy, Check, HelpCircle } from "lucide-react";
+import { Radio, Copy, Check, Question, ArrowClockwise } from "@phosphor-icons/react";
 import { OBSGuideModal } from "@/app/components/OBSGuideModal";
+import { useCSRF } from "@/lib/use-csrf";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { IconButton } from "@/components/ui/IconButton";
+
+interface StreamConfig {
+  serverUrl: string;
+  streamKeyMasked: string | null;
+  hasStreamKey: boolean;
+}
 
 export function StreamSettingsSection() {
-  const { user } = useUser();
+  const { csrfToken } = useCSRF();
+  const [config, setConfig] = useState<StreamConfig | null>(null);
   const [translationSource, setTranslationSource] = useState("mic_only");
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [rotating, setRotating] = useState(false);
+
+  // Fetch stream config from API
+  const fetchConfig = async () => {
+    try {
+      const res = await fetch("/api/stream-config");
+      if (res.ok) setConfig(await res.json());
+    } catch (err) {
+      console.error("[stream-settings] Failed to fetch config:", err);
+    }
+  };
 
   useEffect(() => {
+    fetchConfig();
     // Sync current source state
     import("@/lib/obs-relay-client").then((mod) => {
       setTranslationSource(mod.obsRelayManager.translationSource);
@@ -25,6 +47,25 @@ export function StreamSettingsSection() {
     import("@/lib/obs-relay-client").then((mod) => {
       mod.obsRelayManager.setTranslationSource(src);
     });
+  };
+
+  const handleRotateKey = async () => {
+    setRotating(true);
+    try {
+      const res = await fetch("/api/stream-config", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken || "",
+        },
+        body: JSON.stringify({ rotateKey: true }),
+      });
+      if (res.ok) setConfig(await res.json());
+    } catch (err) {
+      console.error("[stream-settings] Failed to rotate key:", err);
+    } finally {
+      setRotating(false);
+    }
   };
 
   const copyToClipboard = (text: string, type: "url" | "key") => {
@@ -44,7 +85,7 @@ export function StreamSettingsSection() {
         <div className="flex items-start justify-between mb-8">
           <div>
             <div className="w-10 h-10 rounded-[12px] bg-[#3B82F6]/10 flex items-center justify-center mb-4">
-              <Radio className="w-5 h-5 text-[#3B82F6]" />
+              <Radio className="w-5 h-5 text-[#3B82F6]" weight="bold" />
             </div>
             <h2 className="text-[20px] font-syne font-bold text-gray-900 mb-2">
               Stream Settings
@@ -59,10 +100,10 @@ export function StreamSettingsSection() {
           {/* Server URL */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center">
             <p className="text-[13px] font-dm-sans font-bold text-gray-700">Server URL</p>
-            <div className="md:col-span-2 relative group/copy cursor-pointer" onClick={() => copyToClipboard("rtmp://localhost:1935/live", "url")}>
+            <div className="md:col-span-2 relative group/copy cursor-pointer" onClick={() => config && copyToClipboard(config.serverUrl, "url")}>
               <div className="flex items-center justify-between w-full bg-gray-50/80 border border-gray-100 rounded-[12px] px-4 py-3 text-[14px] font-mono text-gray-600 transition-all group-hover/copy:bg-white group-hover/copy:shadow-sm">
-                <span>rtmp://localhost:1935/live</span>
-                {copiedUrl ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-gray-400 opacity-0 group-hover/copy:opacity-100 transition-opacity" />}
+                <span>{config ? config.serverUrl : "Loading..."}</span>
+                {copiedUrl ? <Check className="w-4 h-4 text-green-500" weight="bold" /> : <Copy className="w-4 h-4 text-gray-400 opacity-0 group-hover/copy:opacity-100 transition-opacity" weight="bold" />}
               </div>
             </div>
           </div>
@@ -70,13 +111,31 @@ export function StreamSettingsSection() {
           {/* Stream Key */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center">
             <p className="text-[13px] font-dm-sans font-bold text-gray-700">Stream Key</p>
-            <div className="md:col-span-2 relative group/copy cursor-pointer" onClick={() => user?.id && copyToClipboard(user.id, "key")}>
-              <div className="flex items-center justify-between w-full bg-gray-50/80 border border-gray-100 rounded-[12px] px-4 py-3 text-[14px] font-mono text-gray-600 transition-all group-hover/copy:bg-white group-hover/copy:shadow-sm">
-                <span className="blur-sm group-hover/copy:blur-none transition-all duration-300">
-                  {user?.id || "••••••••"}
-                </span>
-                {copiedKey ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-gray-400 opacity-0 group-hover/copy:opacity-100 transition-opacity" />}
+            <div className="md:col-span-2">
+              <div
+                className="relative group/copy cursor-pointer"
+                onClick={() => config?.streamKeyMasked && copyToClipboard(config.streamKeyMasked.replace("••••", ""), "key")}
+              >
+                <div className="flex items-center justify-between w-full bg-gray-50/80 border border-gray-100 rounded-[12px] px-4 py-3 text-[14px] font-mono text-gray-600 transition-all group-hover/copy:bg-white group-hover/copy:shadow-sm">
+                  <span className="blur-sm group-hover/copy:blur-none transition-all duration-300">
+                    {config ? (config.streamKeyMasked || "Not set") : "Loading..."}
+                  </span>
+                  {copiedKey ? <Check className="w-4 h-4 text-green-500" weight="bold" /> : <Copy className="w-4 h-4 text-gray-400 opacity-0 group-hover/copy:opacity-100 transition-opacity" weight="bold" />}
+                </div>
               </div>
+              {config?.hasStreamKey && (
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={ArrowClockwise}
+                    loading={rotating}
+                    onClick={handleRotateKey}
+                  >
+                    Regenerate key
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -87,13 +146,11 @@ export function StreamSettingsSection() {
             <div>
               <p className="text-[13px] font-dm-sans font-bold text-gray-700 mb-1 flex items-center justify-between">
                 Translate Audio From
-                <button 
+                <IconButton
+                  icon={Question}
+                  ariaLabel="How to separate audio"
                   onClick={() => setShowGuide(true)}
-                  className="text-[#3B82F6] hover:text-[#2563EB] transition-colors p-1"
-                  title="How to separate audio"
-                >
-                  <HelpCircle className="w-4 h-4" />
-                </button>
+                />
               </p>
               <p className="text-[11px] text-gray-400 leading-snug">
                 In OBS, pan Desktop to Left and Mic to Right to separate them.
