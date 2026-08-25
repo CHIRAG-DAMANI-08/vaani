@@ -226,10 +226,10 @@ export default function SettingsPage() {
     <div className="space-y-8 max-w-7xl pt-2">
       {/* Page Header */}
       <div>
-        <h1 className="text-[32px] font-syne font-bold text-gray-900 tracking-tight">
+        <h1 className="text-[32px] font-bold text-white tracking-tight" style={{ fontFamily: "var(--font-serif)" }}>
           Settings
         </h1>
-        <p className="text-[14px] text-gray-500 font-dm-sans mt-1">
+        <p className="text-[14px] text-white/60 mt-1">
           Manage API keys and streaming configuration.
         </p>
       </div>
@@ -237,18 +237,18 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <div className="space-y-6">
           {/* ── Sarvam API Key Section ── */}
-      <section className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] rounded-[28px] overflow-hidden">
+      <section className="liquid-glass rounded-[28px] overflow-hidden">
         {/* Section header */}
-        <div className="flex items-center justify-between px-8 pt-7 pb-5 border-b border-gray-100">
+        <div className="flex items-center justify-between px-8 pt-7 pb-5 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-[12px] bg-[#FFF2E5] flex items-center justify-center">
-              <KeyRound className="w-5 h-5 text-[#F5821F]" />
+            <div className="w-10 h-10 rounded-[12px] bg-[hsl(var(--accent)/0.2)] flex items-center justify-center">
+              <KeyRound className="w-5 h-5 text-[hsl(var(--accent))]" />
             </div>
             <div>
-              <h2 className="text-[16px] font-syne font-bold text-gray-900">
+              <h2 className="text-[16px] font-bold text-white">
                 Sarvam API Key
               </h2>
-              <p className="text-[12px] font-dm-sans text-gray-400">
+              <p className="text-[12px] text-white/60">
                 Used for speech-to-text, translation, and text-to-speech
               </p>
             </div>
@@ -257,7 +257,7 @@ export default function SettingsPage() {
             href="https://dashboard.sarvam.ai"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[12px] font-dm-sans font-medium text-[#F5821F] hover:text-[#E8690A] inline-flex items-center gap-1 transition-colors"
+            className="text-[12px] font-medium text-[hsl(var(--accent))] hover:text-[hsl(var(--accent)/0.8)] inline-flex items-center gap-1 transition-colors"
           >
             Get keys <ExternalLink className="w-3 h-3" />
           </a>
@@ -266,8 +266,8 @@ export default function SettingsPage() {
         <div className="px-8 py-6">
           {loading ? (
             <div className="flex items-center gap-3 py-4">
-              <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-              <p className="text-[13px] text-gray-400 font-dm-sans">
+              <Loader2 className="w-5 h-5 text-white/40 animate-spin" />
+              <p className="text-[13px] text-white/60">
                 Checking key status...
               </p>
             </div>
@@ -277,13 +277,12 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p
-                    className="text-[14px] text-gray-900 font-medium"
-                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                    className="text-[14px] text-white/80 font-medium"
                   >
                     {keyStatus.masked}
                   </p>
                 </div>
-                <p className="text-[12px] font-dm-sans text-gray-400">
+                <p className="text-[12px] text-white/50">
                   Last updated{" "}
                   {keyStatus.updatedAt
                     ? formatDate(keyStatus.updatedAt)
@@ -299,14 +298,14 @@ export default function SettingsPage() {
                     setErrorCode(null);
                     setTimeout(() => inputRef.current?.focus(), 100);
                   }}
-                  className="px-5 py-2.5 rounded-[14px] text-[13px] font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100 hover:shadow-sm active:scale-[0.98] transition-all flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-[14px] text-[13px] font-semibold text-white/80 bg-white/5 border border-white/10 hover:bg-white/10 hover:shadow-sm active:scale-[0.98] transition-all flex items-center gap-2"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   Update key
                 </button>
                 <button
                   onClick={() => setShowRemoveDialog(true)}
-                  className="px-5 py-2.5 rounded-[14px] text-[13px] font-semibold text-[#EF4444] bg-[#FEF2F2] border border-[#FEE2E2] hover:bg-[#FEE2E2] active:scale-[0.98] transition-all flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-[14px] text-[13px] font-semibold text-[hsl(var(--status-error))] bg-white/5 border border-white/10 hover:bg-white/10 active:scale-[0.98] transition-all flex items-center gap-2"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Remove key
@@ -316,9 +315,9 @@ export default function SettingsPage() {
           ) : !keyStatus?.connected && sectionState === "view" ? (
             /* ── State B: No Key Connected ── */
             <div>
-              <div className="flex items-center gap-3 mb-4 p-4 rounded-[16px] bg-[#FFFBEB] border border-[#FDE68A]/50">
-                <ShieldAlert className="w-5 h-5 text-[#F59E0B] shrink-0" />
-                <p className="text-[13px] font-dm-sans text-[#92400E]">
+              <div className="flex items-center gap-3 mb-4 p-4 rounded-[16px] bg-white/5 border border-white/10">
+                <ShieldAlert className="w-5 h-5 text-[hsl(var(--status-error))] shrink-0" />
+                <p className="text-[13px] text-white/80">
                   No API key connected. Vaani cannot translate your streams
                   without a Sarvam API key.
                 </p>
@@ -330,7 +329,7 @@ export default function SettingsPage() {
                   setErrorCode(null);
                   setTimeout(() => inputRef.current?.focus(), 100);
                 }}
-                className="px-6 py-3 rounded-[16px] text-[14px] font-semibold bg-gray-900 text-white hover:bg-gray-800 shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:scale-[0.98] transition-all"
+                className="px-6 py-3 rounded-[16px] text-[14px] font-semibold bg-white/10 text-white hover:bg-white/15 shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:scale-[0.98] transition-all"
               >
                 Add key
               </button>
@@ -340,11 +339,9 @@ export default function SettingsPage() {
             <div>
               {/* Show current key if editing */}
               {sectionState === "edit" && keyStatus?.connected && (
-                <p className="text-[12px] font-dm-sans text-gray-400 mb-3">
+                <p className="text-[12px] text-white/50 mb-3">
                   Current key:{" "}
-                  <span style={{ fontFamily: "var(--font-jetbrains)" }}>
-                    {keyStatus.masked}
-                  </span>
+                  <span>{keyStatus.masked}</span>
                 </p>
               )}
 
@@ -375,23 +372,22 @@ export default function SettingsPage() {
                     actionState === "success" ||
                     countdown > 0
                   }
-                  className={`w-full rounded-[16px] border px-4 py-3.5 pr-12 text-[13px] text-gray-900 bg-gray-50/50 outline-none transition-all duration-200 placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-[#F5821F]/15 ${
+                  className={`w-full rounded-[16px] border px-4 py-3.5 pr-12 text-[13px] text-white bg-white/5 outline-none transition-all duration-200 placeholder:text-white/40 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-[hsl(var(--accent))/0.3] ${
                     actionState === "error"
-                      ? "border-[#EF4444] focus:border-[#EF4444]"
+                      ? "border-[hsl(var(--status-error))] focus:border-[hsl(var(--status-error))]"
                       : actionState === "success"
-                      ? "border-[#10B981] focus:border-[#10B981]"
-                      : "border-gray-200 focus:border-[#F5821F]/40"
+                      ? "border-[hsl(var(--status-live))] focus:border-[hsl(var(--status-live))]"
+                      : "border-white/10 focus:border-[hsl(var(--accent)/0.4)]"
                   }`}
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-white/40 hover:text-white/60 transition-colors"
                   tabIndex={-1}
                 >
                   {actionState === "success" ? (
-                    <Check className="w-4 h-4 text-[#10B981]" />
+                    <Check className="w-4 h-4 text-[hsl(var(--status-live))]" />
                   ) : showKey ? (
                     <EyeOff className="w-4 h-4" />
                   ) : (
@@ -404,8 +400,8 @@ export default function SettingsPage() {
               <div className="h-[36px] flex items-start mb-2">
                 {errorCode && (
                   <div className="flex items-start gap-2 animate-[fade-in_150ms_ease]">
-                    <AlertCircle className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
-                    <p className="text-[12px] font-dm-sans text-[#EF4444] leading-[1.5]">
+                    <AlertCircle className="w-4 h-4 text-[hsl(var(--status-error))] shrink-0 mt-0.5" />
+                    <p className="text-[12px] text-[hsl(var(--status-error))] leading-[1.5]">
                       {ERROR_MESSAGES[errorCode] || "Something went wrong."}
                       {errorCode === "RATE_LIMIT_EXCEEDED" &&
                         countdown > 0 && (
@@ -425,12 +421,12 @@ export default function SettingsPage() {
                   disabled={!canSubmit}
                   className={`px-6 py-3 rounded-[16px] text-[14px] font-semibold transition-all duration-300 flex items-center gap-2 ${
                     actionState === "success"
-                      ? "bg-[#10B981] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
+                      ? "bg-[hsl(var(--status-live))] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)]"
                       : actionState === "loading"
-                      ? "bg-gray-900 text-white opacity-80"
+                      ? "bg-white/20 text-white opacity-80"
                       : canSubmit
-                      ? "bg-gray-900 text-white hover:bg-gray-800 shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:scale-[0.98]"
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      ? "bg-[hsl(var(--accent))] text-white hover:bg-[hsl(var(--accent)/0.9)] shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:scale-[0.98]"
+                      : "bg-white/5 text-white/40 cursor-not-allowed"
                   }`}
                 >
                   {actionState === "loading" && (
@@ -449,7 +445,7 @@ export default function SettingsPage() {
                 </button>
                 <button
                   onClick={handleCancel}
-                  className="px-5 py-2.5 rounded-[14px] text-[14px] font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all"
+                  className="px-5 py-2.5 rounded-[14px] text-[14px] font-medium text-white/50 hover:text-white hover:bg-white/10 transition-all"
                 >
                   Cancel
                 </button>
@@ -471,10 +467,10 @@ export default function SettingsPage() {
       {/* ── Remove Key Confirmation Dialog ── */}
       {showRemoveDialog && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[8px] animate-[fade-in_150ms_ease]" />
-          <div className="fixed z-[60] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[420px] bg-white/95 backdrop-blur-xl border border-white shadow-[0_32px_80px_rgba(0,0,0,0.12)] rounded-[28px] p-8">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[8px] animate-[fade-in_150ms_ease]" />
+          <div className="fixed z-[60] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[420px] liquid-glass rounded-[28px] p-8">
             <div className="flex items-start justify-between mb-4">
-              <h3 className="text-[20px] font-syne font-bold text-gray-900">
+              <h3 className="text-[20px] font-bold text-white">
                 Remove API key?
               </h3>
               <button
@@ -482,20 +478,20 @@ export default function SettingsPage() {
                   setShowRemoveDialog(false);
                   setActionState("idle");
                 }}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-[14px] font-dm-sans text-gray-500 leading-[1.6] mb-4">
+            <p className="text-[14px] text-white/60 leading-[1.6] mb-4">
               Vaani will no longer be able to translate your streams. You can
               reconnect a key at any time from Settings.
             </p>
 
-            <div className="flex items-center gap-2 p-3 rounded-[12px] bg-[#FFFBEB] border border-[#FDE68A]/50 mb-7">
-              <AlertCircle className="w-4 h-4 text-[#F59E0B] shrink-0" />
-              <p className="text-[12px] font-dm-sans text-[#92400E]">
+            <div className="flex items-center gap-2 p-3 rounded-[12px] bg-white/5 border border-[hsl(var(--status-error))/0.3] mb-7">
+              <AlertCircle className="w-4 h-4 text-[hsl(var(--status-error))] shrink-0" />
+              <p className="text-[12px] text-white/80">
                 Any active streams will stop immediately.
               </p>
             </div>
@@ -506,14 +502,14 @@ export default function SettingsPage() {
                   setShowRemoveDialog(false);
                   setActionState("idle");
                 }}
-                className="px-5 py-2.5 rounded-[14px] text-[14px] font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all"
+                className="px-5 py-2.5 rounded-[14px] text-[14px] font-medium text-white/50 hover:text-white hover:bg-white/10 transition-all"
               >
                 Keep key
               </button>
               <button
                 onClick={handleRemoveKey}
                 disabled={actionState === "loading"}
-                className="px-6 py-3 rounded-[16px] text-[14px] font-semibold bg-[#EF4444] text-white hover:bg-[#DC2626] shadow-[0_4px_12px_rgba(239,68,68,0.25)] active:scale-[0.98] transition-all flex items-center gap-2"
+                className="px-6 py-3 rounded-[16px] text-[14px] font-semibold bg-[hsl(var(--status-error))] text-white hover:bg-[hsl(var(--status-error)/0.9)] shadow-[0_4px_12px_rgba(239,68,68,0.25)] active:scale-[0.98] transition-all flex items-center gap-2"
               >
                 {actionState === "loading" && (
                   <Loader2 className="w-4 h-4 animate-spin" />

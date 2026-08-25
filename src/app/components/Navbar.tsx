@@ -3,17 +3,19 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
-import {
-  Menu,
-  X,
-} from "lucide-react";
+import { Menu, X, Instagram, Linkedin, Twitter } from "lucide-react";
 
 const navLinks = [
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Features", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "For creators", href: "#for-creators" },
+  { label: "Home", href: "/" },
+  { label: "How It Works", href: "#how-it-works" },
+  { label: "Philosophy", href: "#philosophy" },
+  { label: "Use Cases", href: "#use-cases" },
+];
+
+const socialLinks = [
+  { icon: Instagram, href: "#" },
+  { icon: Linkedin, href: "#" },
+  { icon: Twitter, href: "#" },
 ];
 
 export const Navbar = () => {
@@ -31,125 +33,98 @@ export const Navbar = () => {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-[1200px] rounded-full transition-all duration-300 ${
-        scrolled
-          ? "bg-white/90 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-200"
-          : "bg-white/80 backdrop-blur-md border border-gray-200"
-      }`}
+      className="fixed top-0 left-0 w-full z-50 bg-transparent"
     >
-      <div className="flex items-center justify-between px-6 py-3">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <span
-            className="text-2xl font-bold tracking-tight text-gray-900"
-            style={{ fontFamily: "var(--font-syne)" }}
-          >
-            vaani
-          </span>
-        </Link>
-
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-1">
-          {navLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              className="px-4 py-2 text-sm font-medium tracking-wide uppercase text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 rounded-full transition-all duration-200"
+      <div className="max-w-6xl mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
+          {/* Logo - Concentric Circles */}
+          <Link href="/" className="flex items-center gap-3">
+            <div className="relative w-7 h-7">
+              <div className="absolute inset-0 rounded-full border-2 border-white/60" />
+              <div className="absolute top-1/2 left-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 border border-white/60 rounded-full" />
+            </div>
+            <span
+              className="text-xl font-bold tracking-tight text-white"
+              style={{ fontFamily: "var(--font-serif)" }}
             >
-              {link.label}
-            </Link>
-          ))}
-        </div>
+              vaani
+            </span>
+          </Link>
 
-        {/* CTA Buttons */}
-        <div className="hidden md:flex items-center gap-3">
-          <Show when="signed-out">
-            <button
-              onClick={(e) => { e.preventDefault(); window.dispatchEvent(new Event("open-waitlist")); }}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] active:scale-95 transition-all duration-200 shadow-sm"
-              style={{ fontFamily: "var(--font-syne)" }}
-            >
-              Join the waitlist
-            </button>
-            <SignInButton>
-              <button
-                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-full hover:bg-gray-50 active:scale-95 transition-all duration-200 shadow-sm"
-                style={{ fontFamily: "var(--font-syne)" }}
-              >
-                Sign in
-              </button>
-            </SignInButton>
-          </Show>
-          <Show when="signed-in">
-            <Link
-              href="/dashboard"
-              className="px-5 py-2.5 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] active:scale-95 transition-all duration-200 shadow-sm"
-              style={{ fontFamily: "var(--font-syne)" }}
-            >
-              Dashboard
-            </Link>
-            <UserButton />
-          </Show>
-        </div>
-
-        {/* Mobile Menu Toggle */}
-        <button
-          className="md:hidden p-2 rounded-full text-gray-800 hover:bg-gray-100 transition-colors"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </div>
-
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden overflow-hidden"
-          >
-            <div className="px-6 pb-5 pt-2 flex flex-col gap-2">
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-6">
+            <div className="flex items-center gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.label}
                   href={link.href}
-                  className="px-4 py-3 text-sm font-medium tracking-wide uppercase text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
-                  onClick={() => setMobileOpen(false)}
+                  className="px-3 py-1.5 text-sm font-medium text-white/70 hover:text-white transition-colors duration-200"
                 >
-                  {link.label}
+                  {link.label} <span className="mx-1">•</span>
                 </Link>
               ))}
-              <div className="flex flex-col gap-2 mt-3">
-                <Show when="signed-out">
-                  <button
-                    onClick={(e) => { e.preventDefault(); setMobileOpen(false); window.dispatchEvent(new Event("open-waitlist")); }}
-                    className="px-5 py-3 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] text-center shadow-sm"
-                  >
-                    Join the waitlist
-                  </button>
-                  <SignInButton>
-                    <button className="px-5 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-full text-center hover:bg-gray-50 shadow-sm">
-                      Sign in
-                    </button>
-                  </SignInButton>
-                </Show>
-                <Show when="signed-in">
+            </div>
+
+            {/* Social Icons */}
+            <div className="flex items-center gap-2">
+              {socialLinks.map((social, i) => (
+                <a
+                  key={i}
+                  href={social.href}
+                  className="w-9 h-9 rounded-full liquid-glass flex items-center justify-center hover:scale-105 transition-transform duration-200"
+                >
+                  <social.icon size={18} className="text-white/70" />
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Mobile Menu Toggle */}
+          <button
+            className="md:hidden p-2 rounded-full text-white hover:bg-white/10 transition-colors"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden overflow-hidden mt-4"
+            >
+              <div className="flex flex-col gap-3">
+                {navLinks.map((link) => (
                   <Link
-                    href="/dashboard"
-                    className="px-5 py-3 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] text-center shadow-sm"
+                    key={link.label}
+                    href={link.href}
+                    className="px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors duration-200"
                     onClick={() => setMobileOpen(false)}
                   >
-                    Dashboard
+                    {link.label}
                   </Link>
-                </Show>
+                ))}
+                <div className="flex gap-2 pt-2">
+                  {socialLinks.map((social, i) => (
+                    <a
+                      key={i}
+                      href={social.href}
+                      className="w-9 h-9 rounded-full liquid-glass flex items-center justify-center hover:scale-105 transition-transform duration-200"
+                    >
+                      <social.icon size={18} className="text-white/70" />
+                    </a>
+                  ))}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.nav>
   );
 };

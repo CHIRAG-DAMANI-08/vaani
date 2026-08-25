@@ -133,10 +133,10 @@ export default function ChannelsPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[32px] font-syne font-bold text-gray-900 tracking-tight">
+          <h1 className="text-[32px] font-bold text-white tracking-tight" style={{ fontFamily: "var(--font-serif)" }}>
             Channels
           </h1>
-          <p className="text-[14px] text-gray-500 font-dm-sans mt-1">
+          <p className="text-[14px] text-white/60 mt-1">
             Configure language channels for your multilingual pipeline.
           </p>
         </div>
@@ -145,8 +145,8 @@ export default function ChannelsPage() {
       {/* Channels List */}
       {loading ? (
         <div className="flex items-center gap-3 py-12 justify-center">
-          <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-          <p className="text-[13px] text-gray-400 font-dm-sans">
+          <Loader2 className="w-5 h-5 text-white/40 animate-spin" />
+          <p className="text-[13px] text-white/60">
             Loading channels...
           </p>
         </div>
@@ -159,32 +159,32 @@ export default function ChannelsPage() {
             return (
               <div
                 key={ch.id}
-                className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_12px_40px_rgba(0,0,0,0.03)] rounded-[28px] overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_50px_rgba(0,0,0,0.06)]"
+                className="liquid-glass rounded-[28px] overflow-hidden transition-all duration-300 hover:-translate-y-0.5"
               >
                 {/* Channel Header */}
                 <div className="px-7 pt-6 pb-4 flex items-start justify-between">
                   <div className="flex items-center gap-4">
                     {/* Language icon */}
                     <div
-                      className="w-12 h-12 rounded-[16px] bg-white shadow-sm flex items-center justify-center relative overflow-hidden"
+                      className="w-12 h-12 rounded-[16px] bg-white/5 flex items-center justify-center relative overflow-hidden"
                     >
                       <div
-                        className="absolute inset-0 opacity-10 blur-md"
+                        className="absolute inset-0 opacity-20 blur-md"
                         style={{ backgroundColor: ch.color }}
                       />
                       <span
                         className="text-[20px] font-bold z-10"
-                        style={{ color: ch.configured ? ch.color : undefined }}
+                        style={{ color: ch.configured ? ch.color : "white/60" }}
                       >
                         {ch.script.charAt(0)}
                       </span>
                     </div>
 
                     <div>
-                      <h3 className="text-[18px] font-syne font-bold text-gray-900">
+                      <h3 className="text-[18px] font-bold text-white">
                         {ch.script}
                       </h3>
-                      <p className="text-[13px] font-dm-sans text-gray-500">
+                      <p className="text-[13px] text-white/50">
                         {ch.name}
                       </p>
                     </div>
@@ -192,12 +192,12 @@ export default function ChannelsPage() {
 
                   {/* Status badge */}
                   <span
-                    className={`text-[11px] font-dm-sans font-bold px-3 py-1.5 rounded-[10px] ${
+                    className={`text-[11px] font-bold px-3 py-1.5 rounded-[10px] ${
                       ch.configured && ch.enabled
-                        ? "bg-[#10B981]/10 text-[#10B981]"
+                        ? "bg-[hsl(var(--status-live))/0.1] text-[hsl(var(--status-live))]"
                         : ch.configured
-                        ? "bg-gray-100 text-gray-500"
-                        : "bg-transparent text-gray-400 border border-gray-200 border-dashed"
+                        ? "bg-white/10 text-white/60"
+                        : "bg-transparent text-white/40 border border-white/20 border-dashed"
                     }`}
                   >
                     {ch.configured && ch.enabled
@@ -212,15 +212,14 @@ export default function ChannelsPage() {
                   {/* ── Configured view ── */}
                   {ch.configured && !isEditing && (
                     <div>
-                      <div className="flex items-center gap-2 mb-4 p-3 rounded-[12px] bg-gray-50/80">
-                        <Radio className="w-4 h-4 text-gray-400 shrink-0" />
+                      <div className="flex items-center gap-2 mb-4 p-3 rounded-[12px] bg-white/5">
+                        <Radio className="w-4 h-4 text-white/40 shrink-0" />
                         <p
-                          className="text-[12px] text-gray-500 truncate"
-                          style={{ fontFamily: "var(--font-jetbrains)" }}
+                          className="text-[12px] text-white/60 truncate"
                         >
                           {ch.rtmpUrl || "RTMP URL configured"}
                         </p>
-                        <span className="text-[11px] text-[#10B981] font-medium ml-auto shrink-0">
+                        <span className="text-[11px] text-[hsl(var(--accent))] font-medium ml-auto shrink-0">
                           Key saved
                         </span>
                       </div>
@@ -230,7 +229,7 @@ export default function ChannelsPage() {
                         <button
                           onClick={() => handleToggle(ch)}
                           className={`w-[40px] h-[22px] rounded-full relative transition-colors duration-200 ${
-                            ch.enabled ? "bg-[#10B981]" : "bg-gray-200"
+                            ch.enabled ? "bg-[hsl(var(--status-live))]" : "bg-white/20"
                           }`}
                         >
                           <div
@@ -239,20 +238,20 @@ export default function ChannelsPage() {
                             }`}
                           />
                         </button>
-                        <span className="text-[12px] font-dm-sans text-gray-500">
+                        <span className="text-[12px] text-white/50">
                           {ch.enabled ? "Enabled" : "Disabled"}
                         </span>
 
                         <div className="ml-auto flex gap-2">
                           <button
                             onClick={() => startEdit(ch)}
-                            className="p-2 rounded-[10px] text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                            className="p-2 rounded-[10px] text-white/40 hover:text-white hover:bg-white/10 transition-colors"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteConfirm(ch.id)}
-                            className="p-2 rounded-[10px] text-gray-400 hover:text-[#EF4444] hover:bg-[#FEF2F2] transition-colors"
+                            className="p-2 rounded-[10px] text-white/40 hover:text-[hsl(var(--status-error))] hover:bg-white/10 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -261,20 +260,20 @@ export default function ChannelsPage() {
 
                       {/* Delete confirmation inline */}
                       {isDeleting && (
-                        <div className="mt-3 p-3 rounded-[12px] bg-[#FEF2F2] border border-[#FEE2E2] animate-[fade-in_150ms_ease]">
-                          <p className="text-[12px] font-dm-sans text-[#991B1B] mb-2">
+                        <div className="mt-3 p-3 rounded-[12px] bg-white/5 border border-white/10 animate-[fade-in_150ms_ease]">
+                          <p className="text-[12px] text-white/80 mb-2">
                             Remove this channel? The RTMP key will be deleted.
                           </p>
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleDelete(ch.id)}
-                              className="px-3 py-1.5 rounded-[10px] text-[12px] font-semibold bg-[#EF4444] text-white hover:bg-[#DC2626] transition-colors"
+                              className="px-3 py-1.5 rounded-[10px] text-[12px] font-semibold bg-[hsl(var(--status-error))] text-white hover:bg-[hsl(var(--status-error)/0.9)] transition-colors"
                             >
                               Remove
                             </button>
                             <button
                               onClick={() => setDeleteConfirm(null)}
-                              className="px-3 py-1.5 rounded-[10px] text-[12px] font-medium text-gray-500 hover:bg-gray-100 transition-colors"
+                              className="px-3 py-1.5 rounded-[10px] text-[12px] font-medium text-white/50 hover:bg-white/10 transition-colors"
                             >
                               Cancel
                             </button>
@@ -290,10 +289,10 @@ export default function ChannelsPage() {
                       {!isEditing && !ch.configured && (
                         <button
                           onClick={() => startEdit(ch)}
-                          className="w-full p-4 rounded-[16px] border-2 border-dashed border-gray-200 hover:border-[#F5821F]/40 text-gray-400 hover:text-[#F5821F] transition-all group flex items-center justify-center gap-2"
+                          className="w-full p-4 rounded-[16px] border-2 border-dashed border-white/20 hover:border-[hsl(var(--accent))/0.4] text-white/40 hover:text-[hsl(var(--accent))] transition-all group flex items-center justify-center gap-2"
                         >
                           <Plus className="w-4 h-4" />
-                          <span className="text-[13px] font-dm-sans font-medium">
+                          <span className="text-[13px] font-medium">
                             Configure channel
                           </span>
                         </button>
@@ -303,7 +302,7 @@ export default function ChannelsPage() {
                         <div className="space-y-3 animate-[fade-slide-up_200ms_ease-out_forwards] opacity-0">
                           {/* RTMP URL */}
                           <div>
-                            <label className="text-[12px] font-dm-sans font-semibold text-gray-600 mb-1.5 block">
+                            <label className="text-[12px] font-semibold text-white/60 mb-1.5 block">
                               RTMP Server URL
                             </label>
                             <input
@@ -311,13 +310,13 @@ export default function ChannelsPage() {
                               value={editRtmpUrl}
                               onChange={(e) => setEditRtmpUrl(e.target.value)}
                               placeholder="rtmp://a.rtmp.youtube.com/live2"
-                              className="w-full rounded-[12px] border border-gray-200 bg-gray-50/50 px-3.5 py-3 text-[13px] text-gray-900 outline-none placeholder:text-gray-400 focus:border-[#F5821F]/40 focus:ring-2 focus:ring-[#F5821F]/10 transition-all"
+                              className="w-full rounded-[12px] border border-white/10 bg-white/5 px-3.5 py-3 text-[13px] text-white outline-none placeholder:text-white/40 focus:border-[hsl(var(--accent)/0.4)] focus:ring-2 focus:ring-[hsl(var(--accent)/0.2)] transition-all"
                             />
                           </div>
 
                           {/* RTMP Key */}
                           <div>
-                            <label className="text-[12px] font-dm-sans font-semibold text-gray-600 mb-1.5 block">
+                            <label className="text-[12px] font-semibold text-white/60 mb-1.5 block">
                               Stream Key
                             </label>
                             <div className="relative">
@@ -330,13 +329,12 @@ export default function ChannelsPage() {
                                     ? "Enter new key to replace..."
                                     : "Paste your stream key..."
                                 }
-                                className="w-full rounded-[12px] border border-gray-200 bg-gray-50/50 px-3.5 py-3 pr-10 text-[13px] text-gray-900 outline-none placeholder:text-gray-400 focus:border-[#F5821F]/40 focus:ring-2 focus:ring-[#F5821F]/10 transition-all"
-                                style={{ fontFamily: "var(--font-jetbrains)" }}
+                                className="w-full rounded-[12px] border border-white/10 bg-white/5 px-3.5 py-3 pr-10 text-[13px] text-white outline-none placeholder:text-white/40 focus:border-[hsl(var(--accent)/0.4)] focus:ring-2 focus:ring-[hsl(var(--accent)/0.2)] transition-all"
                               />
                               <button
                                 type="button"
                                 onClick={() => setShowRtmpKey(!showRtmpKey)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60"
                                 tabIndex={-1}
                               >
                                 {showRtmpKey ? (
@@ -353,7 +351,7 @@ export default function ChannelsPage() {
                             href="https://support.google.com/youtube/answer/2907883"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[11px] font-dm-sans text-[#F5821F] hover:text-[#E8690A] inline-flex items-center gap-1 transition-colors"
+                            className="text-[11px] text-[hsl(var(--accent))] hover:text-[hsl(var(--accent)/0.8)] inline-flex items-center gap-1 transition-colors"
                           >
                             Where to find your stream key{" "}
                             <ExternalLink className="w-3 h-3" />
@@ -366,8 +364,8 @@ export default function ChannelsPage() {
                               disabled={saving || (!editRtmpKey && !ch.hasRtmpKey)}
                               className={`px-4 py-2.5 rounded-[12px] text-[13px] font-semibold transition-all flex items-center gap-2 ${
                                 saving || (!editRtmpKey && !ch.hasRtmpKey)
-                                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                  : "bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.98] shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
+                                  ? "bg-white/5 text-white/40 cursor-not-allowed"
+                                  : "bg-[hsl(var(--accent))] text-white hover:bg-[hsl(var(--accent)/0.9)] active:scale-[0.98] shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
                               }`}
                             >
                               {saving ? (
@@ -379,7 +377,7 @@ export default function ChannelsPage() {
                             </button>
                             <button
                               onClick={cancelEdit}
-                              className="px-4 py-2.5 rounded-[12px] text-[13px] font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all flex items-center gap-2"
+                              className="px-4 py-2.5 rounded-[12px] text-[13px] font-medium text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2"
                             >
                               <X className="w-4 h-4" />
                               Cancel
