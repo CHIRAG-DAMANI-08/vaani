@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { Show, UserButton } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
 
 const navLinks = [
@@ -61,24 +61,28 @@ export const Navbar = () => {
         {/* CTA Buttons */}
         <div className="hidden md:flex items-center gap-3">
           <Show when="signed-out">
-            <button
-              onClick={(e) => { e.preventDefault(); window.dispatchEvent(new Event("open-waitlist")); }}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-foreground rounded-full hover:bg-[#2a2a2a] active:scale-95 transition-all duration-200 cta-shadow font-serif"
+            <Link
+              href="/sign-in"
+              data-testid="navbar-signin"
+              className="px-6 py-2.5 text-sm font-semibold text-foreground bg-white/80 backdrop-blur-md border border-white/20 rounded-full hover:bg-white active:scale-[0.98] transition-all duration-200 liquid-glass"
             >
-              Join the waitlist
-            </button>
-            <SignInButton>
-              <button
-                className="px-5 py-2.5 text-sm font-medium text-text-secondary bg-card-bg border border-card-border rounded-full hover:bg-black/5 active:scale-95 transition-all duration-200 shadow-sm font-sans"
-              >
-                Sign in
-              </button>
-            </SignInButton>
+              Sign in
+            </Link>
+            <Link
+              href="/sign-up"
+              data-testid="navbar-signup"
+              className="px-6 py-2.5 text-sm font-semibold text-background bg-foreground rounded-full hover:bg-opacity-90 active:scale-[0.98] transition-all duration-200"
+              style={{ transformOrigin: "center" }}
+            >
+              Sign up
+            </Link>
           </Show>
           <Show when="signed-in">
             <Link
               href="/dashboard"
-              className="px-5 py-2.5 text-sm font-medium text-white bg-foreground rounded-full hover:bg-[#2a2a2a] active:scale-95 transition-all duration-200 cta-shadow font-serif"
+              data-testid="navbar-dashboard"
+              className="px-6 py-2.5 text-sm font-semibold text-background bg-foreground rounded-full hover:bg-opacity-90 active:scale-[0.98] transition-all duration-200"
+              style={{ transformOrigin: "center" }}
             >
               Dashboard
             </Link>
@@ -118,22 +122,28 @@ export const Navbar = () => {
               ))}
               <div className="flex flex-col gap-2 mt-3">
                 <Show when="signed-out">
-                  <button
-                    onClick={(e) => { e.preventDefault(); setMobileOpen(false); window.dispatchEvent(new Event("open-waitlist")); }}
-                    className="px-5 py-3 text-sm font-medium text-white bg-foreground rounded-full hover:bg-[#2a2a2a] text-center cta-shadow font-serif"
+                  <Link
+                    href="/sign-in"
+                    data-testid="navbar-signin"
+                    className="px-6 py-3 text-sm font-semibold text-foreground bg-white/80 backdrop-blur-md border border-white/20 rounded-full text-center hover:bg-white transition-all duration-200 liquid-glass"
                   >
-                    Join the waitlist
-                  </button>
-                  <SignInButton>
-                    <button className="px-5 py-3 text-sm font-medium text-text-secondary bg-card-bg border border-card-border rounded-full text-center hover:bg-black/5 shadow-sm font-sans">
-                      Sign in
-                    </button>
-                  </SignInButton>
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    data-testid="navbar-signup"
+                    className="px-6 py-3 text-sm font-semibold text-background bg-foreground rounded-full text-center hover:bg-opacity-90 transition-all duration-200"
+                    style={{ transformOrigin: "center" }}
+                  >
+                    Sign up
+                  </Link>
                 </Show>
                 <Show when="signed-in">
                   <Link
                     href="/dashboard"
-                    className="px-5 py-3 text-sm font-medium text-white bg-foreground rounded-full hover:bg-[#2a2a2a] text-center cta-shadow font-serif"
+                    data-testid="navbar-dashboard"
+                    className="px-6 py-3 text-sm font-semibold text-background bg-foreground rounded-full text-center hover:bg-opacity-90 transition-all duration-200"
+                    style={{ transformOrigin: "center" }}
                     onClick={() => setMobileOpen(false)}
                   >
                     Dashboard
