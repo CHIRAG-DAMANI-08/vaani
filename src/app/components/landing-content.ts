@@ -220,7 +220,6 @@ export const footerSections = [
     title: "Socials",
     links: [
       { label: "LinkedIn", href: "#" },
-      { label: "X", href: "#" },
       { label: "YouTube", href: "#" },
     ],
   },

@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { toast } from "sonner";
+import { Show, UserButton, useClerk } from "@clerk/nextjs";
+import { LogIn } from "lucide-react";
 
 const HERO_VIDEO =
   "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260325_120549_0cd82c36-56b3-4dd9-b190-069cfc3a623f.mp4";
@@ -21,6 +23,7 @@ const lineReveal = {
 export const Hero = () => {
   const ref = useRef(null);
   const [email, setEmail] = useState("");
+  const { openSignIn } = useClerk();
 
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -39,6 +42,12 @@ export const Hero = () => {
     }
     toast.success("You're on the list. Welcome to vaani.");
     setEmail("");
+  };
+
+  const handleSignIn = () => {
+    openSignIn({
+      forceRedirectUrl: "/dashboard",
+    });
   };
 
   return (
@@ -155,6 +164,30 @@ export const Hero = () => {
             JOIN BETA
           </motion.button>
         </motion.form>
+
+        {/* Auth buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 1.1 }}
+          className="flex items-center gap-3 mt-6"
+        >
+          <Show when="signed-out">
+            <motion.button
+              onClick={handleSignIn}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-[#F5821F] rounded-full hover:bg-[#E8690A] active:scale-95 transition-all duration-200 shadow-sm"
+              data-testid="hero-signin-button"
+            >
+              <LogIn className="w-4 h-4" />
+              Sign In
+            </motion.button>
+          </Show>
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
+        </motion.div>
       </motion.div>
     </section>
   );

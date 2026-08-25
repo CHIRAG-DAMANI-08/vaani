@@ -62,7 +62,27 @@
       "Bash(curl -sL \"https://raw.githubusercontent.com/CHIRAG-DAMANI-08/vaani--landing/main/frontend/src/components/landing/CTA.jsx\" 2>/dev/null)",
       "Bash(curl -sL \"https://raw.githubusercontent.com/CHIRAG-DAMANI-08/vaani--landing/main/frontend/src/components/landing/Solution.jsx\" 2>/dev/null)",
       "Bash(cat /tmp/vaani-landing-clone/vaani--landing/frontend/src/lib/motion.js 2>/dev/null || cat /tmp/vaani-landing-clone/vaani--landing/frontend/src/lib/*.js 2>/dev/null | head -100)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(find /c/Code/vaani/.worktrees/vaani-changes/src/app/components -name \"*.tsx\" -type f 2>/dev/null | head -30)",
+      "Bash(cat \"/c/Code/vaani/.worktrees/vaani-changes/src/app/\\(auth\\)/sign-in/[[...sign-in]]/page.tsx\" 2>/dev/null || ls -la \"/c/Code/vaani/.worktrees/vaani-changes/src/app/\\(auth\\)/\")",
+      "Bash(grep -rn \"instagram\\\\|twitter\\\\|linkedin\\\\|Instagram\\\\|Twitter\\\\|Linkedin\" /c/Code/vaani/.worktrees/vaani-changes/src --include=\"*.tsx\" --include=\"*.ts\" --include=\"*.jsx\" --include=\"*.js\" 2>/dev/null | head -50)",
+      "Bash(cat \"/c/Code/vaani/.worktrees/vaani-changes/src/app/\\(auth\\)/sign-up/[[...sign-up]]/page.tsx\")",
+      "Bash(npx eslint:*)",
+      "Bash(grep -rn \"useClerk\\\\|useSignIn\" /c/Code/vaani/.worktrees/vaani-changes/src --include=\"*.tsx\" --include=\"*.ts\" 2>/dev/null | head -20)",
+      "Bash(grep -rn \"openSignIn\\\\|afterSignInUrl\" /c/Code/vaani/.worktrees/vaani-changes/src --include=\"*.tsx\" --include=\"*.ts\" 2>/dev/null | head -20)",
+      "Bash(find /c/Code/vaani/.worktrees/vaani-changes/node_modules/@clerk -name \"*.d.ts\" -exec grep -l \"openSignIn\" {} \\\\; 2>/dev/null | head -5)",
+      "Bash(find . -type f -name \"page.tsx\" | xargs ls -la 2>/dev/null)",
+      "Bash(find /c/Code/vaani/src -name \"*.jsx\" -o -name \"*.tsx\" | xargs grep -l \"export default function Landing\" 2>/dev/null | head -5)",
+      "Bash(find /c/Code/vaani/src -type f -name \"*.tsx\" -o -name \"*.jsx\" | xargs grep -l \"HeroSection\" 2>/dev/null | head -10)",
+      "Bash(find /c/Code/vaani/src -name \"*.tsx\" -exec grep -l \"HeroSection\" {} \\\\; 2>/dev/null | head -10)",
+      "Bash(grep -r \"instagram\\\\|linkedin\\\\|twitter\\\\|facebook\\\\|youtube\\\\|discord\\\\|telegram\\\\|tiktok\\\\|pinterest\\\\|linkedin\" --include=\"*.tsx\" --include=\"*.ts\" ./src/ 2>/dev/null | head -20)",
+      "Bash(find ./src -name \"*.tsx\" -exec grep -l \"Icon\\\\|icon\" {} \\\\; | head -20)",
+      "Bash(ls -la ./src/app/components/ 2>/dev/null || find ./src -name \"*.tsx\" -o -name \"*.ts\" | head -50)",
+      "Bash(grep -r \"lucide-react\\\\|MessageCircle\\\\|discord\" --include=\"*.tsx\" --include=\"*.ts\" . 2>/dev/null | head -30)",
+      "Bash(grep -r -i \"instagram\\\\|linkedin\\\\|twitter\\\\|facebook\\\\|youtube\\\\|discord\\\\|telegram\\\\|tiktok\\\\|pinterest\\\\|linkedin\" --include=\"*.tsx\" --include=\"*.ts\" --include=\"*.js\" --include=\"*.jsx\" --include=\"*.md\" --include=\"*.json\" --include=\"*.svg\" . 2>/dev/null | grep -v node_modules | head -30)",
+      "Bash(ls -la ./src/app/components/ | grep -E \"\\\\.\\(tsx|svg|png|jpg\\)$\")",
+      "Bash(find ./public -type f | grep -E \"\\\\.\\(svg|png|jpg\\)$\")",
+      "Bash(grep -r \"Instagram\\\\|LinkedIn\\\\|Twitter\" /c/Code/vaani/.worktrees/vaani-changes/ --include=\"*.tsx\" --include=\"*.ts\" --include=\"*.md\" --include=\"*.json\" --include=\"*.css\" --include=\"*.scss\" 2>/dev/null | head -20)"
     ]
   },
   "enabledPlugins": {
