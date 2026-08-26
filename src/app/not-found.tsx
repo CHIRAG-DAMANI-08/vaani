@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Logo } from "@/app/components/Logo";
 import { PeaceHand3D } from "@/app/components/PeaceHand3D";
 
 export default function NotFound() {
@@ -12,12 +13,15 @@ export default function NotFound() {
         <PeaceHand3D />
       </div>
 
-      {/* Top Header Navigation (using Vaani Design System DM Sans & Syne) */}
+      {/* Top Header Navigation with Vaani Logo and Landing Page Section Anchors */}
       <header className="w-full z-30 px-6 sm:px-12 md:px-16 py-6 sm:py-8 flex items-center justify-between font-[family-name:var(--font-dm-sans)] text-[12px] sm:text-[13px] uppercase tracking-[0.22em] text-[#808080] hover:text-white transition-colors">
+        
+        {/* Brand Logo + Wordmark */}
         <Link
           href="/"
-          className="group relative flex items-center gap-1.5 font-[family-name:var(--font-syne)] font-bold text-white tracking-widest"
+          className="group relative flex items-center gap-2.5 font-[family-name:var(--font-syne)] font-bold text-white tracking-widest"
         >
+          <Logo outer="w-5 h-5" inner="w-2 h-2" />
           <span>VAANI</span>
           <svg
             viewBox="0 0 11 11"
@@ -29,9 +33,10 @@ export default function NotFound() {
           </svg>
         </Link>
 
+        {/* Section Navigation Links */}
         <nav className="flex items-center gap-6 sm:gap-10 md:gap-14">
           <Link
-            href="/dashboard"
+            href="/#how-it-works"
             className="group relative flex items-center gap-1.5 hover:text-white transition-colors"
           >
             <svg
@@ -42,27 +47,12 @@ export default function NotFound() {
             >
               <path d="M5.208 10.43L0 5.222L5.208 0L10.43 5.222L5.208 10.43Z" />
             </svg>
-            <span className="hidden sm:inline">SELECTED WORK</span>
+            <span className="hidden sm:inline">HOW IT WORKS</span>
           </Link>
 
           <Link
-            href="/beta"
+            href="/#pipeline"
             className="group relative flex items-center gap-1.5 hover:text-white transition-colors"
-          >
-            <svg
-              viewBox="0 0 11 11"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-1.5 h-1.5 fill-current text-white transition-transform duration-300 ease-out scale-0 -rotate-180 group-hover:scale-100 group-hover:rotate-0 absolute -left-3"
-            >
-              <path d="M5.208 10.43L0 5.222L5.208 0L10.43 5.222L5.208 10.43Z" />
-            </svg>
-            <span>ABOUT</span>
-          </Link>
-
-          <Link
-            href="/channels"
-            className="group relative flex items-center gap-1.5 hover:text-white transition-colors hidden sm:flex"
           >
             <svg
               viewBox="0 0 11 11"
@@ -73,6 +63,21 @@ export default function NotFound() {
               <path d="M5.208 10.43L0 5.222L5.208 0L10.43 5.222L5.208 10.43Z" />
             </svg>
             <span>PIPELINE</span>
+          </Link>
+
+          <Link
+            href="/#use-cases"
+            className="group relative flex items-center gap-1.5 hover:text-white transition-colors hidden sm:flex"
+          >
+            <svg
+              viewBox="0 0 11 11"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-1.5 h-1.5 fill-current text-white transition-transform duration-300 ease-out scale-0 -rotate-180 group-hover:scale-100 group-hover:rotate-0 absolute -left-3"
+            >
+              <path d="M5.208 10.43L0 5.222L5.208 0L10.43 5.222L5.208 10.43Z" />
+            </svg>
+            <span>USE CASES</span>
           </Link>
 
           <Link
@@ -106,31 +111,8 @@ export default function NotFound() {
         </h1>
       </main>
 
-      {/* Bottom Action Button with Arrow & Diamond hover animation */}
-      <footer className="w-full z-30 py-8 sm:py-12 flex items-center justify-center text-center">
-        <Link
-          href="/"
-          className="group inline-flex items-center gap-2.5 font-[family-name:var(--font-dm-sans)] text-[12px] sm:text-[13px] uppercase tracking-[0.24em] font-medium text-white hover:text-white transition-all active:scale-[0.98]"
-        >
-          {/* Animated Diamond Icon */}
-          <div className="relative w-3.5 h-3.5 flex items-center justify-center overflow-hidden">
-            <svg
-              viewBox="0 0 11 11"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-3 h-3 fill-current text-white transition-transform duration-300 ease-out group-hover:scale-125 group-hover:rotate-45"
-            >
-              <path d="M5.208 10.43L0 5.222L5.208 0L10.43 5.222L5.208 10.43Z" />
-            </svg>
-          </div>
-          <span>SEE SELECTED WORK</span>
-        </Link>
-      </footer>
+      {/* Minimal bottom spacer without the button */}
+      <div className="h-10 sm:h-14 pointer-events-none" />
     </div>
   );
 }
-
-
-
-
-
