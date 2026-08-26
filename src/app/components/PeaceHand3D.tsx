@@ -81,7 +81,8 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
 
     let model: THREE.Group | null = null;
     let currentScale = 0;
-    const targetScale = 1.35;
+    const targetScale = 2.05; // Enlarged hand to fill center area
+    const baseRotationY = Math.PI / 2; // 90 degrees around Y to face directly forward
     const targetRotation = { x: 0, y: 0 };
     const currentRotation = { x: 0, y: 0 };
     const targetPos = { x: 0, y: 0 };
@@ -131,8 +132,9 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
         const box = new THREE.Box3().setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());
         model.position.sub(center);
-        model.position.y -= 0.15;
-        model.scale.setScalar(0); // Start from 0 for entrance scale animation
+        model.position.y -= 0.1;
+        model.rotation.y = baseRotationY;
+        model.scale.setScalar(0); // Start from 0 for slow entrance scale animation
 
         scene.add(model);
         setLoaded(true);
@@ -151,12 +153,12 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
       const normY = (e.clientY - rect.top) / rect.height - 0.5;
 
       // Inverted rotation: moving mouse right rotates hand to the left
-      targetRotation.y = -normX * 0.75;
-      targetRotation.x = -normY * 0.55;
+      targetRotation.y = -normX * 0.6;
+      targetRotation.x = -normY * 0.45;
 
       // Inverted subtle position shift
-      targetPos.x = -normX * 0.25;
-      targetPos.y = normY * 0.2;
+      targetPos.x = -normX * 0.2;
+      targetPos.y = normY * 0.18;
 
       onCoordsChange?.({
         x: Math.round(e.clientX),
@@ -178,28 +180,28 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
 
     window.addEventListener("resize", handleResize);
 
-    // Render loop with smooth scale entrance and damping
+    // Render loop with slow, smooth scale entrance and damping
     let animationFrameId: number;
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
 
       if (model) {
-        // Entrance scale from 0 to full size
+        // Slow, organic entrance scale from 0 to full size
         if (currentScale < targetScale) {
-          currentScale += (targetScale - currentScale) * 0.045;
+          currentScale += (targetScale - currentScale) * 0.018;
           model.scale.setScalar(currentScale);
         }
 
         // Damping / Spring interpolation
-        currentRotation.x += (targetRotation.x - currentRotation.x) * 0.06;
-        currentRotation.y += (targetRotation.y - currentRotation.y) * 0.06;
-        currentPos.x += (targetPos.x - currentPos.x) * 0.06;
-        currentPos.y += (targetPos.y - currentPos.y) * 0.06;
+        currentRotation.x += (targetRotation.x - currentRotation.x) * 0.05;
+        currentRotation.y += (targetRotation.y - currentRotation.y) * 0.05;
+        currentPos.x += (targetPos.x - currentPos.x) * 0.05;
+        currentPos.y += (targetPos.y - currentPos.y) * 0.05;
 
         model.rotation.x = currentRotation.x;
-        model.rotation.y = currentRotation.y;
+        model.rotation.y = baseRotationY + currentRotation.y;
         model.position.x = currentPos.x;
-        model.position.y = -0.15 + currentPos.y;
+        model.position.y = -0.1 + currentPos.y;
       }
 
       renderer.render(scene, camera);
@@ -220,12 +222,12 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
 
   if (!webGlSupported) {
     return (
-      <div className="relative w-[340px] sm:w-[460px] md:w-[560px] aspect-[2/3] drop-shadow-[0_25px_45px_rgba(0,0,0,0.9)] flex items-center justify-center">
+      <div className="relative w-[380px] sm:w-[520px] md:w-[680px] aspect-[4/3] drop-shadow-[0_25px_45px_rgba(0,0,0,0.9)] flex items-center justify-center">
         <Image
           src="/hand-peace-404.png"
           alt="Clay Peace Hand 404"
           fill
-          sizes="(max-width: 768px) 100vw, 560px"
+          sizes="(max-width: 768px) 100vw, 680px"
           priority
           className="object-contain filter contrast-[1.08] brightness-[0.98]"
         />
@@ -234,7 +236,7 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
   }
 
   return (
-    <div className="relative w-[340px] sm:w-[480px] md:w-[620px] h-[360px] sm:h-[480px] md:h-[560px] flex items-center justify-center">
+    <div className="relative w-[380px] sm:w-[540px] md:w-[720px] h-[400px] sm:h-[520px] md:h-[620px] flex items-center justify-center">
       {/* 3D WebGL Canvas mount */}
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
     </div>
