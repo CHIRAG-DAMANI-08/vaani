@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import Image from "next/image";
 
 interface PeaceHand3DProps {
@@ -51,48 +50,32 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMappingExposure = 1.3;
     container.appendChild(renderer.domElement);
 
-    // Physically-Based Environment Map for realistic 360-degree specular reflections
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    pmremGenerator.compileEquirectangularShader();
-    const neutralRoom = new RoomEnvironment();
-    const envTexture = pmremGenerator.fromScene(neutralRoom, 0.04).texture;
-    scene.environment = envTexture;
-    scene.environmentIntensity = 1.25;
-
-    // Studio Physical Lighting setup
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    // Studio Grazing Lighting to strongly reveal normal map sculpt depth
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
     scene.add(ambientLight);
 
-    // Grazing Key Light from top-right for high-relief displacement shadows
-    const grazingKey = new THREE.DirectionalLight(0xffffff, 4.5);
-    grazingKey.position.set(5, 5, 3.8);
-    grazingKey.castShadow = true;
+    // Grazing Key Light from top-right
+    const grazingKey = new THREE.DirectionalLight(0xffffff, 3.8);
+    grazingKey.position.set(5, 5, 3.5);
     scene.add(grazingKey);
 
     // Side Fill Light from left
-    const sideFill = new THREE.DirectionalLight(0xffffff, 2.5);
+    const sideFill = new THREE.DirectionalLight(0xffffff, 2.2);
     sideFill.position.set(-5, 2, 2.5);
     scene.add(sideFill);
 
     // Front soft light
-    const frontFill = new THREE.DirectionalLight(0xffffff, 1.4);
+    const frontFill = new THREE.DirectionalLight(0xffffff, 1.2);
     frontFill.position.set(0, 0, 5);
     scene.add(frontFill);
 
-    // Sharp top-back rim light for edge contouring
-    const rimLight = new THREE.DirectionalLight(0xffffff, 4.0);
+    // Sharp top-back rim light
+    const rimLight = new THREE.DirectionalLight(0xffffff, 3.0);
     rimLight.position.set(0, 6, -3.5);
     scene.add(rimLight);
-
-    // Interactive specular point light that dynamically dances across normal ridges
-    const dynamicSpecularLight = new THREE.PointLight(0xffffff, 3.5, 12, 1.2);
-    dynamicSpecularLight.position.set(1.5, 2, 3);
-    scene.add(dynamicSpecularLight);
 
     let model: THREE.Group | null = null;
     let currentScale = 0;
@@ -118,7 +101,7 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
 
         if (isDisposed) return;
 
-        // Texture configuration for normal mapping and displacement
+        // Texture configuration for normal mapping
         normalMap.flipY = false;
         normalMap.colorSpace = THREE.NoColorSpace;
         normalMap.generateMipmaps = true;
@@ -148,14 +131,14 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
             if (isDisposed) return;
             model = gltf.scene;
 
-            // Apply advanced MeshPhysicalMaterial with actual displacement, normal relief, and clearcoat reflections
+            // Apply textures and compute vertex tangents for accurate normal map displacement
             model.traverse((child) => {
               if ((child as THREE.Mesh).isMesh) {
                 const mesh = child as THREE.Mesh;
                 mesh.castShadow = true;
                 mesh.receiveShadow = true;
 
-                // Explicitly compute vertex tangents on the geometry
+                // Explicitly compute vertex tangents on the Draco-decoded geometry
                 try {
                   if (typeof (mesh.geometry as any).computeTangents === "function") {
                     (mesh.geometry as any).computeTangents();
@@ -166,42 +149,22 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
 
                 const matName = (mesh.name || "").toLowerCase();
                 if (matName.includes("ring")) {
-                  // Ring Mesh: Ultra-reflective metallic ring with normal grooves
-                  mesh.material = new THREE.MeshPhysicalMaterial({
-                    color: 0x121212,
-                    metalness: 0.98,
-                    roughness: 0.08,
+                  mesh.material = new THREE.MeshStandardMaterial({
+                    color: 0x141414,
+                    roughness: 0.12,
+                    metalness: 0.96,
                     normalMap: ringNormalMap,
-                    normalScale: new THREE.Vector2(3.0, 3.0),
-                    clearcoat: 1.0,
-                    clearcoatRoughness: 0.05,
-                    clearcoatNormalMap: ringNormalMap,
-                    envMapIntensity: 2.8,
+                    normalScale: new THREE.Vector2(2.5, 2.5),
                   });
                 } else {
-                  // Hand Mesh: Tactile concrete clay with real displacement and physical light reflections
-                  mesh.material = new THREE.MeshPhysicalMaterial({
-                    color: 0x767676,
+                  // Hand mesh: Emoji_lowUV - dark concrete clay tone
+                  mesh.material = new THREE.MeshStandardMaterial({
+                    color: 0x7e7e7e,
+                    roughness: 0.65,
                     metalness: 0.05,
-                    roughness: 0.52,
                     normalMap: normalMap,
-                    normalScale: new THREE.Vector2(4.5, 4.5),
-                    bumpMap: normalMap,
-                    bumpScale: 0.06,
-                    displacementMap: roughnessMap,
-                    displacementScale: 0.035,
-                    displacementBias: -0.015,
+                    normalScale: new THREE.Vector2(3.6, 3.6),
                     roughnessMap: roughnessMap,
-                    // Clearcoat specular reflections for physical light bouncing
-                    clearcoat: 0.48,
-                    clearcoatRoughness: 0.28,
-                    clearcoatNormalMap: normalMap,
-                    // Sheen for micro-fleece / concrete grain highlights
-                    sheen: 0.75,
-                    sheenRoughness: 0.45,
-                    sheenColor: new THREE.Color(0xcbcbcb),
-                    ior: 1.54,
-                    envMapIntensity: 1.4,
                   });
                 }
                 mesh.material.needsUpdate = true;
@@ -247,9 +210,6 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
       targetPos.x = -normX * 0.42;
       targetPos.y = normY * 0.32;
 
-      // Move specular light to track cursor for real-time glints
-      dynamicSpecularLight.position.set(-normX * 4 + 1, -normY * 3 + 2, 3.5);
-
       onCoordsChange?.({
         x: Math.round(e.clientX),
         y: Math.round(e.clientY),
@@ -272,7 +232,7 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
 
     // Render loop with slow, smooth, and graceful damping
     let animationFrameId: number;
-    const clock = new THREE.Clock();
+    let clock = new THREE.Clock();
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
@@ -316,8 +276,6 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
       if (renderer.domElement && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
-      pmremGenerator.dispose();
-      neutralRoom.dispose();
       renderer.dispose();
     };
   }, [onCoordsChange]);
