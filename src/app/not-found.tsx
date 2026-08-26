@@ -119,10 +119,9 @@ export default function NotFound() {
         </nav>
       </header>
 
-      {/* Main Center Area: 404 Heading + Dynamic Fun Fact + Text-only CTA */}
-      <main className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 text-center">
-        {/* 404 Display Typography */}
-        <h1 className="text-[30.5vw] min-[601px]:text-[26.25vw] leading-none tracking-[-0.04em] font-normal text-[#A8A8A8] flex items-center justify-center select-none drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)] pointer-events-none">
+      {/* Main Center Area: 404 Heading */}
+      <main className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 text-center pointer-events-none">
+        <h1 className="text-[30.5vw] min-[601px]:text-[26.25vw] leading-none tracking-[-0.04em] font-normal text-[#A8A8A8] flex items-center justify-center select-none drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
           <span
             className="italic font-serif font-light text-[#A8A8A8]"
             style={{ fontFamily: "'Playfair Display', 'Instrument Serif', Georgia, serif" }}
@@ -132,23 +131,30 @@ export default function NotFound() {
           <span className="font-sans font-normal text-[#A8A8A8]">0</span>
           <span className="font-sans font-bold text-[#A8A8A8]">4</span>
         </h1>
+      </main>
 
-        {/* Dynamic Fun Fact, Notice, and Text-only CTA positioned lower */}
-        <div className="mt-4 sm:mt-6 md:mt-8 max-w-xl flex flex-col items-center gap-3 px-4 pointer-events-auto">
+      {/* Bottom Information Section: Positioned clearly below the 3D hand */}
+      <footer className="w-full z-30 pb-8 sm:pb-12 pt-2 flex flex-col items-center justify-center text-center px-4">
+        <div className="max-w-xl flex flex-col items-center gap-2 pointer-events-auto">
           {funFact && (
-            <p className="font-[family-name:var(--font-dm-sans)] text-[12px] sm:text-[14px] text-white/70 tracking-wide leading-relaxed font-normal transition-opacity duration-700 animate-in fade-in">
-              &ldquo;{funFact}&rdquo;
-            </p>
+            <div className="flex flex-col items-center gap-1 animate-in fade-in duration-700">
+              <span className="font-[family-name:var(--font-syne)] text-[11px] sm:text-[12px] uppercase tracking-[0.25em] font-semibold text-white/90">
+                Did you know?
+              </span>
+              <p className="font-[family-name:var(--font-dm-sans)] text-[12px] sm:text-[14px] text-white/75 tracking-wide leading-relaxed font-normal max-w-lg">
+                &ldquo;{funFact}&rdquo;
+              </p>
+            </div>
           )}
 
-          <p className="font-[family-name:var(--font-dm-sans)] text-[11px] sm:text-[13px] text-[#808080] tracking-[0.18em] uppercase font-medium">
+          <p className="font-[family-name:var(--font-dm-sans)] text-[11px] sm:text-[13px] text-[#808080] tracking-[0.18em] uppercase font-medium mt-0.5">
             anyways, that page does not exist.
           </p>
 
           {/* Text-only CTA with Phosphor ArrowRight */}
           <Link
             href="/"
-            className="group inline-flex items-center gap-2 font-[family-name:var(--font-dm-sans)] text-[12px] sm:text-[13px] uppercase tracking-[0.22em] font-medium text-white/80 hover:text-white transition-all mt-2 hover:tracking-[0.26em] active:scale-[0.98]"
+            className="group inline-flex items-center gap-2 font-[family-name:var(--font-dm-sans)] text-[12px] sm:text-[13px] uppercase tracking-[0.22em] font-medium text-white/90 hover:text-white transition-all mt-2.5 hover:tracking-[0.26em] active:scale-[0.98]"
           >
             <span>Back to Home</span>
             <ArrowRight
@@ -158,10 +164,7 @@ export default function NotFound() {
             />
           </Link>
         </div>
-      </main>
-
-      {/* Minimal bottom spacer */}
-      <div className="h-6 sm:h-10 pointer-events-none" />
+      </footer>
     </div>
   );
 }
