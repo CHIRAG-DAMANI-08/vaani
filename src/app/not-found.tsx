@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowRight } from "@phosphor-icons/react";
 import { Logo } from "@/app/components/Logo";
 import { PeaceHand3D } from "@/app/components/PeaceHand3D";
 
@@ -118,7 +119,7 @@ export default function NotFound() {
         </nav>
       </header>
 
-      {/* Main Center Area: 404 Heading + Dynamic Fun Fact */}
+      {/* Main Center Area: 404 Heading + Dynamic Fun Fact + Text-only CTA */}
       <main className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 text-center">
         {/* 404 Display Typography */}
         <h1 className="text-[30.5vw] min-[601px]:text-[26.25vw] leading-none tracking-[-0.04em] font-normal text-[#A8A8A8] flex items-center justify-center select-none drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)] pointer-events-none">
@@ -132,20 +133,30 @@ export default function NotFound() {
           <span className="font-sans font-bold text-[#A8A8A8]">4</span>
         </h1>
 
-        {/* Dynamic Fun Fact & Notice */}
-        <div className="mt-[-2vw] sm:mt-[-1vw] max-w-xl flex flex-col items-center gap-2 px-4 pointer-events-auto">
+        {/* Dynamic Fun Fact, Notice, and Text-only CTA positioned lower */}
+        <div className="mt-4 sm:mt-6 md:mt-8 max-w-xl flex flex-col items-center gap-3 px-4 pointer-events-auto">
           {funFact && (
             <p className="font-[family-name:var(--font-dm-sans)] text-[12px] sm:text-[14px] text-white/70 tracking-wide leading-relaxed font-normal transition-opacity duration-700 animate-in fade-in">
-              <span className="text-[#A8A8A8] font-medium uppercase text-[10px] sm:text-[11px] tracking-[0.2em] block mb-1">
-                Random Fact
-              </span>
               &ldquo;{funFact}&rdquo;
             </p>
           )}
 
-          <p className="font-[family-name:var(--font-dm-sans)] text-[11px] sm:text-[13px] text-[#808080] tracking-[0.15em] uppercase font-medium mt-1">
+          <p className="font-[family-name:var(--font-dm-sans)] text-[11px] sm:text-[13px] text-[#808080] tracking-[0.18em] uppercase font-medium">
             anyways, that page does not exist.
           </p>
+
+          {/* Text-only CTA with Phosphor ArrowRight */}
+          <Link
+            href="/"
+            className="group inline-flex items-center gap-2 font-[family-name:var(--font-dm-sans)] text-[12px] sm:text-[13px] uppercase tracking-[0.22em] font-medium text-white/80 hover:text-white transition-all mt-2 hover:tracking-[0.26em] active:scale-[0.98]"
+          >
+            <span>Back to Home</span>
+            <ArrowRight
+              size={14}
+              weight="bold"
+              className="text-white transition-transform duration-300 ease-out group-hover:translate-x-1.5"
+            />
+          </Link>
         </div>
       </main>
 
