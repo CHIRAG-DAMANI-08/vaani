@@ -3,6 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { connectToDatabase } from "@/lib/mongodb";
 import { BetaMembership } from "@/lib/models/beta-membership";
+import { BetaApplication } from "@/lib/models/beta-application";
 import { logger } from "@/lib/logger";
 import { isAdmin } from "@/lib/admin";
 
@@ -12,62 +13,96 @@ import { isAdmin } from "@/lib/admin";
  *   - no Clerk session → /sign-in
  *   - approved membership not found by clerkUserId → try email-based claim,
  *     and if STILL not approved → /beta/pending
- *
- * The email-based claim folds the plan's separate /api/beta/claim endpoint
- * into the guard itself: an approved applicant who signs in with the same
- * email gets their membership stamped with clerkUserId on first visit and is
- * let through — no extra roundtrip, no duplicate-endpoint surface.
  */
 export async function requireMembershipForLayout() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  // ponytail: Admins bypass beta membership checks entirely
+  // Admins bypass beta membership checks entirely
   if (await isAdmin()) return { status: "approved", applicationEmail: "admin" } as any;
 
   await connectToDatabase();
 
   // Fast path: membership already linked to this Clerk user.
   let membership = await BetaMembership.findOne({ clerkUserId: userId }).lean();
+  if (membership && membership.status === "approved") {
+    return membership;
+  }
 
-  // Claim path: approved by email but clerkUserId not yet stamped (the
-  // approve route creates the row with clerkUserId: null). Resolve the user's
-  // Clerker primary email and bind it once.
-  if (!membership || membership.status !== "approved") {
+  // Claim path: resolve user emails from Clerk session and check BetaMembership & BetaApplication
+  try {
     const user = await currentUser();
-    const clerkEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase().trim();
-    if (clerkEmail) {
-      const byEmail = await BetaMembership.findOne({
-        applicationEmail: clerkEmail,
-        status: "approved",
-      });
-      if (byEmail) {
-        if (byEmail.clerkUserId && byEmail.clerkUserId !== userId) {
-          // Another Clerk account already owns this email. Flag + refuse.
-          await BetaMembership.updateOne(
-            { _id: byEmail._id },
-            { $set: { conflictFlaggedAt: new Date(), conflictingClerkUserId: userId } }
-          );
-          logger.warn(
-            { applicationEmail: clerkEmail, attemptingUserId: userId, ownerUserId: byEmail.clerkUserId },
-            "beta membership email conflict — refusing access to second Clerk account"
-          );
-        } else if (!byEmail.clerkUserId) {
-          // Unclaimed approved membership matching this email — bind it now.
-          await BetaMembership.updateOne(
-            { _id: byEmail._id, clerkUserId: { $in: [null, undefined] } },
-            { $set: { clerkUserId: userId, claimedAt: new Date() } }
-          );
-          membership = await BetaMembership.findOne({ clerkUserId: userId }).lean();
+    const emails: string[] = [];
+    if (user?.primaryEmailAddress?.emailAddress) {
+      emails.push(user.primaryEmailAddress.emailAddress.toLowerCase().trim());
+    }
+    if (user?.emailAddresses && Array.isArray(user.emailAddresses)) {
+      for (const e of user.emailAddresses) {
+        if (e?.emailAddress) {
+          const clean = e.emailAddress.toLowerCase().trim();
+          if (!emails.includes(clean)) emails.push(clean);
         }
       }
     }
+
+    if (emails.length > 0) {
+      // 1. Check BetaMembership by email
+      const byEmail = await BetaMembership.findOne({
+        applicationEmail: { $in: emails },
+        status: "approved",
+      });
+
+      if (byEmail) {
+        await BetaMembership.updateOne(
+          { _id: byEmail._id },
+          { $set: { clerkUserId: userId, status: "approved", claimedAt: new Date() } }
+        );
+        membership = await BetaMembership.findOne({ clerkUserId: userId }).lean();
+        if (membership && membership.status === "approved") {
+          return membership;
+        }
+        return { status: "approved", applicationEmail: byEmail.applicationEmail };
+      }
+
+      // 2. Fallback check: Direct lookup on BetaApplication
+      const approvedApp = await BetaApplication.findOne({
+        $or: [
+          { email: { $in: emails } },
+          { normalizedEmail: { $in: emails } },
+        ],
+        status: "approved",
+      }).lean();
+
+      if (approvedApp) {
+        const appEmail = (approvedApp.email || emails[0]).toLowerCase().trim();
+        await BetaMembership.findOneAndUpdate(
+          { applicationEmail: appEmail },
+          {
+            $set: {
+              clerkUserId: userId,
+              status: "approved",
+              claimedAt: new Date(),
+            },
+            $setOnInsert: {
+              applicationEmail: appEmail,
+              createdAt: new Date(),
+            },
+          },
+          { upsert: true }
+        );
+
+        membership = await BetaMembership.findOne({ clerkUserId: userId }).lean();
+        if (membership && membership.status === "approved") {
+          return membership;
+        }
+        return { status: "approved", applicationEmail: appEmail };
+      }
+    }
+  } catch (err) {
+    logger.error({ err, userId }, "Error resolving beta membership claim");
   }
 
-  if (!membership || membership.status !== "approved") {
-    redirect("/beta/pending");
-  }
-  return membership;
+  redirect("/beta/pending");
 }
 
 /**
@@ -79,11 +114,59 @@ export async function requireMembership():
   const { userId } = await auth();
   if (!userId) return null;
 
+  if (await isAdmin()) {
+    return { userId, email: "admin", applicationEmail: "admin" };
+  }
+
   await connectToDatabase();
   const membership = await BetaMembership.findOne({ clerkUserId: userId }).lean();
-  if (!membership || membership.status !== "approved") return null;
+  if (membership && membership.status === "approved") {
+    return { userId, email: membership.applicationEmail, applicationEmail: membership.applicationEmail };
+  }
 
-  return { userId, email: membership.applicationEmail, applicationEmail: membership.applicationEmail };
+  // Check emails fallback
+  try {
+    const user = await currentUser();
+    const emails: string[] = [];
+    if (user?.primaryEmailAddress?.emailAddress) {
+      emails.push(user.primaryEmailAddress.emailAddress.toLowerCase().trim());
+    }
+    if (user?.emailAddresses && Array.isArray(user.emailAddresses)) {
+      for (const e of user.emailAddresses) {
+        if (e?.emailAddress) {
+          const clean = e.emailAddress.toLowerCase().trim();
+          if (!emails.includes(clean)) emails.push(clean);
+        }
+      }
+    }
+
+    if (emails.length > 0) {
+      const approvedApp = await BetaApplication.findOne({
+        $or: [
+          { email: { $in: emails } },
+          { normalizedEmail: { $in: emails } },
+        ],
+        status: "approved",
+      }).lean();
+
+      if (approvedApp) {
+        const appEmail = (approvedApp.email || emails[0]).toLowerCase().trim();
+        await BetaMembership.findOneAndUpdate(
+          { applicationEmail: appEmail },
+          {
+            $set: { clerkUserId: userId, status: "approved", claimedAt: new Date() },
+            $setOnInsert: { applicationEmail: appEmail, createdAt: new Date() },
+          },
+          { upsert: true }
+        );
+        return { userId, email: appEmail, applicationEmail: appEmail };
+      }
+    }
+  } catch {
+    // Silently fall through
+  }
+
+  return null;
 }
 
 export async function claimMembership(
@@ -96,19 +179,50 @@ export async function claimMembership(
   }
 
   const user = await currentUser();
-  const clerkEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase().trim();
-  if (!clerkEmail) {
+  const emails: string[] = [];
+  if (user?.primaryEmailAddress?.emailAddress) {
+    emails.push(user.primaryEmailAddress.emailAddress.toLowerCase().trim());
+  }
+  if (user?.emailAddresses && Array.isArray(user.emailAddresses)) {
+    for (const e of user.emailAddresses) {
+      if (e?.emailAddress) {
+        const clean = e.emailAddress.toLowerCase().trim();
+        if (!emails.includes(clean)) emails.push(clean);
+      }
+    }
+  }
+
+  if (emails.length === 0) {
     return { error: "no verified email on Clerk account", status: 400 };
   }
 
   await connectToDatabase();
 
   const membership = await BetaMembership.findOne({
-    applicationEmail: clerkEmail,
+    applicationEmail: { $in: emails },
     status: "approved",
   });
 
   if (!membership) {
+    // Check BetaApplication
+    const approvedApp = await BetaApplication.findOne({
+      $or: [{ email: { $in: emails } }, { normalizedEmail: { $in: emails } }],
+      status: "approved",
+    }).lean();
+
+    if (approvedApp) {
+      const appEmail = (approvedApp.email || emails[0]).toLowerCase().trim();
+      await BetaMembership.findOneAndUpdate(
+        { applicationEmail: appEmail },
+        {
+          $set: { clerkUserId: userId, status: "approved", claimedAt: new Date() },
+          $setOnInsert: { applicationEmail: appEmail, createdAt: new Date() },
+        },
+        { upsert: true }
+      );
+      return { ok: true };
+    }
+
     return { error: "no approved membership for this email", status: 403 };
   }
 
@@ -122,7 +236,7 @@ export async function claimMembership(
 
   await BetaMembership.updateOne(
     { _id: membership._id },
-    { $set: { clerkUserId: userId, claimedAt: new Date() } }
+    { $set: { clerkUserId: userId, status: "approved", claimedAt: new Date() } }
   );
 
   return { ok: true };

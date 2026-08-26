@@ -11,11 +11,18 @@ vi.mock("@/lib/models/beta-membership", () => ({
   BetaMembership: {
     findOne: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(null) })),
     updateOne: vi.fn(),
+    findOneAndUpdate: vi.fn(),
+  },
+}));
+vi.mock("@/lib/models/beta-application", () => ({
+  BetaApplication: {
+    findOne: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(null) })),
   },
 }));
 
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { BetaMembership } from "@/lib/models/beta-membership";
+import { BetaApplication } from "@/lib/models/beta-application";
 import { redirect } from "next/navigation";
 
 vi.mock("next/navigation", () => ({
