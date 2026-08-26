@@ -19,6 +19,32 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
+    // Sync any existing WaitlistEntry documents that are not yet in BetaApplication
+    try {
+      const { WaitlistEntry } = await import("@/lib/models/waitlist-entry");
+      const waitlistEntries = await WaitlistEntry.find({}).lean();
+      for (const entry of waitlistEntries) {
+        if (!entry.email) continue;
+        const normalized = entry.email.toLowerCase().trim();
+        const existing = await BetaApplication.findOne({
+          $or: [{ email: normalized }, { normalizedEmail: normalized }],
+        });
+        if (!existing) {
+          await BetaApplication.create({
+            email: normalized,
+            name: entry.name || null,
+            interests: entry.feature_interest ? [entry.feature_interest] : [],
+            status: entry.status === "invited" || entry.status === "converted" ? "approved" : "pending",
+            attemptCount: entry.attemptCount || 1,
+            emailSent: entry.emailSent || false,
+            createdAt: entry.createdAt || new Date(),
+          });
+        }
+      }
+    } catch (syncErr) {
+      console.warn("Waitlist sync warning:", syncErr);
+    }
+
     const pageNumber = Number.isFinite(page) && page > 0 ? page : 1;
     const limitNumber = Number.isFinite(limit) && limit > 0 ? limit : 20;
     const skip = (pageNumber - 1) * limitNumber;

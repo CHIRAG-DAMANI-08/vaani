@@ -45,13 +45,13 @@ export function AudioMeter() {
   const normalizedRms = Math.min(100, Math.round((level.rms / 5000) * 100));
 
   return (
-    <div className="mt-4 pt-4 border-t border-gray-100">
-      <p className="text-[12px] font-dm-sans font-bold text-gray-500 uppercase tracking-wider mb-3">
+    <div className="mt-4 pt-4 border-t border-white/10">
+      <p className="text-[12px] font-sans font-bold text-neutral-500 uppercase tracking-wider mb-3">
         Audio Input
       </p>
 
       {/* Audio Level Bar */}
-      <div className="relative h-[6px] w-full rounded-full bg-gray-100 overflow-hidden mb-2">
+      <div className="relative h-[6px] w-full rounded-full bg-white/10 overflow-hidden mb-2">
         <div
           className="absolute inset-y-0 left-0 rounded-full transition-all duration-150 ease-out"
           style={{
@@ -64,7 +64,7 @@ export function AudioMeter() {
         {[25, 50, 75].map((mark) => (
           <div
             key={mark}
-            className="absolute top-0 bottom-0 w-px bg-gray-200"
+            className="absolute top-0 bottom-0 w-px bg-white/15"
             style={{ left: `${mark}%` }}
           />
         ))}
@@ -77,7 +77,7 @@ export function AudioMeter() {
           position="right"
         >
           <span
-            className="inline-flex items-center gap-1 text-[11px] font-dm-sans font-semibold px-2 py-0.5 rounded-md transition-colors duration-200 cursor-help"
+            className="inline-flex items-center gap-1 text-[11px] font-sans font-semibold px-2 py-0.5 rounded-md transition-colors duration-200 cursor-help"
             style={{
               backgroundColor: `${vad.color}15`,
               color: vad.color,
@@ -91,7 +91,7 @@ export function AudioMeter() {
           content="RMS (Root Mean Square) is your audio volume. ZCR (Zero-Crossing Rate) helps detect speech vs. background noise."
           position="left"
         >
-          <span className="text-[10px] font-mono text-gray-400 cursor-help border-b border-dashed border-gray-300">
+          <span className="text-[10px] font-mono text-neutral-400 cursor-help border-b border-dashed border-white/20">
             RMS {level.rms}
           </span>
         </Tooltip>
@@ -100,10 +100,10 @@ export function AudioMeter() {
       {/* Buffer Progress */}
       <div className="mt-2">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] text-gray-400">Buffer</span>
-          <span className="text-[10px] font-mono text-gray-400">{level.bufferPercent}%</span>
+          <span className="text-[10px] text-neutral-500">Buffer</span>
+          <span className="text-[10px] font-mono text-neutral-400">{level.bufferPercent}%</span>
         </div>
-        <div className="h-[3px] w-full rounded-full bg-gray-100 overflow-hidden">
+        <div className="h-[3px] w-full rounded-full bg-white/10 overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-300 ease-out"
             style={{

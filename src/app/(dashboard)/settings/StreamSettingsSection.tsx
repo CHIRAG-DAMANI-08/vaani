@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Radio, Copy, Check, HelpCircle, Mic } from "lucide-react";
+import { Broadcast, Copy, Check, Question, Microphone } from "@phosphor-icons/react";
 import { OBSGuideModal } from "@/app/components/OBSGuideModal";
 import { GlassCard } from "@/app/components/GlassCard";
 import { getIngestBaseUrl } from "@/lib/ingest";
@@ -50,7 +50,7 @@ export function StreamSettingsSection() {
       <div className="p-6 pb-4 border-b border-white/10">
         <div className="flex items-center gap-3.5">
           <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white shrink-0">
-            <Radio className="w-4 h-4" strokeWidth={1.6} />
+            <Broadcast className="w-4 h-4" />
           </div>
           <div>
             <h2 className="text-base font-sans font-bold text-white tracking-tight">Stream Settings</h2>
@@ -68,7 +68,7 @@ export function StreamSettingsSection() {
             onClick={() => copyToClipboard(ingestUrl, "url")}
           >
             <span className="font-mono text-xs text-neutral-300">{ingestUrl}</span>
-            {copiedUrl ? <Check className="w-3.5 h-3.5 text-[#2DD4BF]" strokeWidth={1.6} /> : <Copy className="w-3.5 h-3.5 text-neutral-500" strokeWidth={1.6} />}
+            {copiedUrl ? <Check className="w-3.5 h-3.5 text-[#2DD4BF]" /> : <Copy className="w-3.5 h-3.5 text-neutral-500" />}
           </div>
         </div>
 
@@ -84,7 +84,7 @@ export function StreamSettingsSection() {
             <span className="font-mono text-xs text-neutral-300">
               {user?.id ? `${user.id.slice(0, 10)}••••••••` : "••••••••••••••••"}
             </span>
-            {copiedKey ? <Check className="w-3.5 h-3.5 text-[#2DD4BF]" strokeWidth={1.6} /> : <Copy className="w-3.5 h-3.5 text-neutral-500" strokeWidth={1.6} />}
+            {copiedKey ? <Check className="w-3.5 h-3.5 text-[#2DD4BF]" /> : <Copy className="w-3.5 h-3.5 text-neutral-500" />}
           </div>
         </div>
 
@@ -94,14 +94,14 @@ export function StreamSettingsSection() {
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between">
             <span className="text-xs font-sans font-semibold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Mic className="w-3.5 h-3.5 text-neutral-400" strokeWidth={1.6} />
+              <Microphone className="w-3.5 h-3.5 text-neutral-400" />
               Translate Audio From
             </span>
             <button 
               onClick={() => setShowGuide(true)}
               className="text-xs text-neutral-400 hover:text-white transition-colors flex items-center gap-1"
             >
-              <HelpCircle className="w-3.5 h-3.5" strokeWidth={1.6} />
+              <Question className="w-3.5 h-3.5" />
               <span>Guide</span>
             </button>
           </div>

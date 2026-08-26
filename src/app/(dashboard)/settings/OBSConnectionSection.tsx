@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { logger } from "@/lib/logger";
-import { Check, Loader2, AlertCircle, X, Activity } from "lucide-react";
+import { Check, CircleNotch, WarningCircle, X, Pulse } from "@phosphor-icons/react";
 import OBSWebSocket from "obs-websocket-js";
 import { GlassCard } from "@/app/components/GlassCard";
 
@@ -131,7 +131,7 @@ export function OBSConnectionSection({
   if (loading) {
     return (
       <GlassCard className="p-8 flex justify-center items-center">
-        <Loader2 className="w-5 h-5 animate-spin text-neutral-500" />
+        <CircleNotch className="w-5 h-5 animate-spin text-neutral-500" />
       </GlassCard>
     );
   }
@@ -145,7 +145,7 @@ export function OBSConnectionSection({
       <div className="p-6 pb-4 border-b border-white/10 flex items-start justify-between">
         <div className="flex items-center gap-3.5">
           <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white shrink-0">
-            <Activity className="w-4 h-4" strokeWidth={1.6} />
+            <Pulse className="w-4 h-4" />
           </div>
           <div>
             <h2 className="text-base font-sans font-bold text-white tracking-tight">OBS Connection</h2>
@@ -226,7 +226,7 @@ export function OBSConnectionSection({
 
             {errorCode && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-red-950/30 border border-red-500/30 text-xs font-sans text-red-300">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" strokeWidth={1.6} />
+                <WarningCircle className="w-4 h-4 text-red-400 shrink-0" weight="bold" />
                 <span>{errorCode}</span>
               </div>
             )}
@@ -237,8 +237,8 @@ export function OBSConnectionSection({
                   onClick={handleSave} 
                   className="px-4 py-2 rounded-full text-xs font-semibold bg-white text-black hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-2"
                 >
-                    {actionState === "loading" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    {actionState === "success" && <Check className="w-3.5 h-3.5" strokeWidth={1.6} />}
+                    {actionState === "loading" && <CircleNotch className="w-3.5 h-3.5 animate-spin" />}
+                    {actionState === "success" && <Check className="w-3.5 h-3.5" />}
                     {actionState === "loading" ? "Saving..." : actionState === "success" ? "Saved!" : "Connect & Save"}
                 </button>
                 {isConfigured && (
@@ -260,13 +260,13 @@ export function OBSConnectionSection({
           <div className="fixed z-[60] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md liquid-glass bg-black/95 border border-white/10 rounded-2xl p-6 space-y-4 shadow-2xl">
             <div className="flex items-start justify-between">
               <h3 className="text-base font-sans font-bold text-white">Disconnect OBS?</h3>
-              <button onClick={() => setShowDisconnectDialog(false)} className="p-1 rounded-lg text-neutral-400 hover:text-white"><X className="w-4 h-4" strokeWidth={1.6} /></button>
+              <button onClick={() => setShowDisconnectDialog(false)} className="p-1 rounded-lg text-neutral-400 hover:text-white"><X className="w-4 h-4" /></button>
             </div>
             <p className="text-xs font-sans text-neutral-400 leading-relaxed">Vaani will disconnect from your broadcasting software. You can reconfigure this at any time.</p>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setShowDisconnectDialog(false)} className="px-4 py-2 rounded-full text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/10">Keep Connected</button>
               <button onClick={handleDisconnect} disabled={actionState === "loading"} className="px-4 py-2 rounded-full text-xs font-semibold bg-red-500 text-white hover:bg-red-600 flex items-center gap-2">
-                {actionState === "loading" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {actionState === "loading" && <CircleNotch className="w-3.5 h-3.5 animate-spin" />}
                 Disconnect
               </button>
             </div>

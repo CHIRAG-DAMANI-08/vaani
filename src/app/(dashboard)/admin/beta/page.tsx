@@ -1,39 +1,37 @@
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { requireAdmin } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/mongodb";
-import { User } from "@/lib/models/user";
-import { BetaApplicationsTable } from "@/app/components/admin/BetaApplicationsTable";
-
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "damanichiru38@gmail.com")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
+import { BetaApplication } from "@/lib/models/beta-application";
+import { AdminDashboardOverview } from "@/app/components/admin/AdminDashboardOverview";
 
 export default async function AdminBetaPage() {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
-
-  await connectToDatabase();
-  const user = await User.findOne({ clerkId: userId }).lean();
-  const email = user?.email?.toLowerCase?.();
-
-  if (!email || !ADMIN_EMAILS.includes(email)) {
+  const admin = await requireAdmin();
+  if (!admin) {
     redirect("/dashboard");
   }
 
-  return (
-    <div className="space-y-8 max-w-5xl">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-4xl lg:text-5xl font-sans font-bold text-white tracking-tight leading-none">
-          Beta <span className="font-serif italic font-normal">Applications</span>
-        </h1>
-        <p className="text-sm font-sans text-neutral-400 mt-2">
-          Review and approve beta waitlist signups.
-        </p>
-      </div>
+  await connectToDatabase();
+  const rawApps = await BetaApplication.find({})
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .lean();
 
-      <BetaApplicationsTable />
-    </div>
-  );
+  const initialApplications = rawApps.map((doc: any) => ({
+    _id: doc._id.toString(),
+    email: doc.email,
+    name: doc.name || undefined,
+    interests: doc.interests || [],
+    youtubeChannel: doc.youtubeChannel || undefined,
+    channelTitle: doc.channelTitle || undefined,
+    subscriberCount: doc.subscriberCount || undefined,
+    channelAvatar: doc.channelAvatar || undefined,
+    obsSetup: doc.obsSetup || "using_obs",
+    sarvamPreference: doc.sarvamPreference || "need_key",
+    reason: doc.reason || undefined,
+    streamFrequency: doc.streamFrequency || "5 streams/wk",
+    status: doc.status || "pending",
+    createdAt: doc.createdAt ? doc.createdAt.toISOString() : new Date().toISOString(),
+  }));
+
+  return <AdminDashboardOverview initialApplications={initialApplications} />;
 }

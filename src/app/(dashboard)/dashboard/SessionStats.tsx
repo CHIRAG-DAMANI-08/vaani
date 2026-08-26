@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, IndianRupee, Layers, Globe, Zap } from "lucide-react";
+import { Clock, CurrencyInr, Stack, Globe, Lightning } from "@phosphor-icons/react";
 import { GlassCard } from "@/app/components/GlassCard";
 
 export function SessionStats() {
@@ -48,10 +48,10 @@ export function SessionStats() {
 
   const stats = [
     { label: "Duration", value: isStreaming ? duration : "—", icon: Clock },
-    { label: "API Cost", value: isStreaming ? cost : "—", icon: IndianRupee },
-    { label: "Chunks", value: isStreaming ? chunks : "—", icon: Layers },
+    { label: "API Cost", value: isStreaming ? cost : "—", icon: CurrencyInr },
+    { label: "Chunks", value: isStreaming ? chunks : "—", icon: Stack },
     { label: "Languages", value: isStreaming ? languages : "—", icon: Globe },
-    { label: "Latency", value: isStreaming ? latency : "—", icon: Zap },
+    { label: "Latency", value: isStreaming ? latency : "—", icon: Lightning },
   ];
 
   return (
@@ -63,11 +63,11 @@ export function SessionStats() {
           className="p-5 flex flex-col justify-between relative overflow-hidden min-h-[140px]"
         >
           {/* Large faded icon watermark */}
-          <s.icon className="absolute -right-3 -top-3 w-20 h-20 text-white/[0.04] pointer-events-none" strokeWidth={1} />
+          <s.icon className="absolute -right-3 -top-3 w-20 h-20 text-white/[0.04] pointer-events-none" />
 
           {/* Icon tile */}
           <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white mb-3">
-            <s.icon className="w-4 h-4" strokeWidth={1.6} />
+            <s.icon className="w-4 h-4" />
           </div>
 
           <div>

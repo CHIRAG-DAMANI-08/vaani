@@ -5,7 +5,7 @@ import { SessionStats } from "./SessionStats";
 import { LiveTranscript } from "./LiveTranscript";
 import { PastSessions } from "./PastSessions";
 import { TestModePanel } from "@/app/components/TestModePanel";
-import { Download } from "lucide-react";
+import { DownloadSimple } from "@phosphor-icons/react/dist/ssr";
 import { auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Session } from "@/lib/models/session";
@@ -66,7 +66,7 @@ export default async function DashboardPage() {
             className="liquid-glass px-4 py-2 rounded-full border border-white/10 text-xs font-semibold text-white hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-2 cursor-pointer"
             download
           >
-            <Download className="w-3.5 h-3.5" strokeWidth={1.6} />
+            <DownloadSimple className="w-3.5 h-3.5" />
             Export Data
           </a>
         </div>

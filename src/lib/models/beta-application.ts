@@ -29,6 +29,43 @@ const betaApplicationSchema = new Schema(
       type: [String],
       default: [],
     },
+    youtubeChannel: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    channelTitle: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    subscriberCount: {
+      type: String,
+      default: null,
+    },
+    channelAvatar: {
+      type: String,
+      default: null,
+    },
+    obsSetup: {
+      type: String,
+      enum: ["using_obs", "needs_guide"],
+      default: "using_obs",
+    },
+    sarvamPreference: {
+      type: String,
+      enum: ["need_key", "bring_own"],
+      default: "need_key",
+    },
+    reason: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    streamFrequency: {
+      type: String,
+      default: "5 streams/wk",
+    },
     status: {
       type: String,
       enum: ["pending", "approved", "rejected", "review"],

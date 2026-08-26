@@ -39,6 +39,20 @@ export async function joinBeta(
   const interests = typeof interestsRaw === "string"
     ? interestsRaw.split(",").map(s => s.trim()).filter(Boolean)
     : [];
+  const youtubeChannelRaw = formData.get("youtubeChannel");
+  const youtubeChannel = typeof youtubeChannelRaw === "string" ? youtubeChannelRaw.trim() : undefined;
+  const channelTitleRaw = formData.get("channelTitle");
+  const channelTitle = typeof channelTitleRaw === "string" ? channelTitleRaw.trim() : undefined;
+  const subscriberCountRaw = formData.get("subscriberCount");
+  const subscriberCount = typeof subscriberCountRaw === "string" ? subscriberCountRaw.trim() : undefined;
+  const channelAvatarRaw = formData.get("channelAvatar");
+  const channelAvatar = typeof channelAvatarRaw === "string" ? channelAvatarRaw.trim() : undefined;
+  const obsSetupRaw = formData.get("obsSetup");
+  const obsSetup = obsSetupRaw === "needs_guide" ? "needs_guide" : "using_obs";
+  const sarvamPreferenceRaw = formData.get("sarvamPreference");
+  const sarvamPreference = sarvamPreferenceRaw === "bring_own" ? "bring_own" : "need_key";
+  const reasonRaw = formData.get("reason");
+  const reason = typeof reasonRaw === "string" ? reasonRaw.trim() : undefined;
 
   // 1. Email rate limit (5/min per email)
   const rl = rateLimit(`beta:${email}`, { maxRequests: 5, windowMs: 60 * 1000 });
@@ -109,6 +123,13 @@ export async function joinBeta(
       deviceHash,
       ipAddress: ip,
       interests,
+      youtubeChannel,
+      channelTitle,
+      subscriberCount,
+      channelAvatar,
+      obsSetup,
+      sarvamPreference,
+      reason,
       status: reviewReason ? "review" : "pending",
       reviewReason,
       normalizedEmail,
@@ -117,15 +138,22 @@ export async function joinBeta(
     });
 
     // Send branded confirmation email via SMTP
-    const displayName = application.name ?? "there";
+    const rawName = (application.name || "").trim();
+    const fallbackUsername = email.split("@")[0].replace(/[._-]/g, " ");
+    const cleanFallback = fallbackUsername ? fallbackUsername.charAt(0).toUpperCase() + fallbackUsername.slice(1) : "there";
+    const displayName = rawName.length > 0 ? rawName : cleanFallback;
     const html = `
       <div style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
         <div style="max-width:520px;margin:0 auto;padding:48px 24px;">
-          <div style="text-align:center;margin-bottom:36px;">
-            <div style="width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.03);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;">
-              <span style="font-family:Georgia,serif;font-style:italic;font-size:20px;color:#fff;">V</span>
-            </div>
-            <div style="font-family:Georgia,serif;font-style:italic;font-size:18px;color:#fff;letter-spacing:0.02em;">Vaani</div>
+          <div style="text-align:center;margin-bottom:32px;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 12px;border-collapse:collapse;">
+              <tr>
+                <td align="center" valign="middle" style="width:42px;height:42px;border-radius:50%;border:2px solid #ffffff;background:rgba(255,255,255,0.05);text-align:center;vertical-align:middle;padding:0;">
+                  <div style="width:14px;height:14px;border-radius:50%;background:#EF4444;margin:0 auto;display:inline-block;vertical-align:middle;">&nbsp;</div>
+                </td>
+              </tr>
+            </table>
+            <div style="font-family:Georgia,serif;font-style:italic;font-size:22px;color:#fff;letter-spacing:0.03em;">vaani</div>
           </div>
 
           <div style="border:1px solid rgba(255,255,255,0.08);border-radius:16px;background:rgba(255,255,255,0.02);padding:40px 32px;text-align:center;">

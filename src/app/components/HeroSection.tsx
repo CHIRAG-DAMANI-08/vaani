@@ -34,33 +34,20 @@ export const HeroSection = () => {
   const contentY = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
   const contentOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
 
-  const handleSubscribe = async (e: React.FormEvent) => {
+  const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const cleanEmail = email.trim();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       toast.error("Enter a valid email to join the beta.");
       return;
     }
 
-    setPending(true);
-    try {
-      const formData = new FormData();
-      formData.append("email", email);
-
-      const response = await joinWaitlist(null, formData);
-
-      if (response.state === "success") {
-        toast.success("You're on the waitlist. Check your inbox to confirm.");
-        setEmail("");
-      } else if (response.state === "duplicate") {
-        toast.info("You're already on the waitlist.");
-      } else {
-        toast.error(response.message);
-      }
-    } catch (error) {
-      logger.error({ error }, "Beta join failed");
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setPending(false);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("open-waitlist", {
+          detail: { email: cleanEmail },
+        })
+      );
     }
   };
 

@@ -29,7 +29,7 @@ export function Tooltip({ children, content, position = "top" }: TooltipProps) {
       {children}
       {isVisible && (
         <div className={`absolute z-[100] ${positionClasses[position]} w-max max-w-xs animate-[fade-in_150ms_ease-out]`}>
-          <div className="bg-gray-900/95 backdrop-blur-sm text-white text-[12px] font-dm-sans rounded-[8px] py-1.5 px-3 shadow-lg pointer-events-none">
+          <div className="liquid-glass bg-black/90 backdrop-blur-md text-white text-[12px] font-sans rounded-xl py-1.5 px-3 shadow-lg pointer-events-none border border-white/10">
             {content}
           </div>
         </div>

@@ -7,13 +7,13 @@
 
 function Shimmer() {
   return (
-    <div className="absolute inset-0 -translate-x-full animate-[skeleton-shimmer_2s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+    <div className="absolute inset-0 -translate-x-full animate-[skeleton-shimmer_2s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
   );
 }
 
 function Base({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <div className={`relative overflow-hidden rounded-[14px] bg-white/30 ${className}`} style={style}>
+    <div className={`relative overflow-hidden rounded-[14px] bg-white/[0.06] ${className}`} style={style}>
       <Shimmer />
     </div>
   );
@@ -37,7 +37,7 @@ export function SkeletonCircle({ size = 40 }: { size?: number }) {
 
 export function SkeletonCard({ className = "" }: { className?: string }) {
   return (
-    <div className={`glass-card p-5 ${className}`}>
+    <div className={`liquid-glass p-5 ${className}`}>
       <div className="space-y-3">
         <Base className="h-[14px] w-1/3" />
         <Base className="h-[20px] w-2/3" />
@@ -80,7 +80,7 @@ export function DashboardPageSkeleton() {
 
       {/* Channel status cards */}
       <div>
-        <div className="h-[12px] w-[100px] rounded bg-white/20 mb-4 font-dm-sans text-[12px] font-bold uppercase tracking-[0.2em]" />
+        <div className="h-[12px] w-[100px] rounded bg-white/10 mb-4 font-sans text-[12px] font-bold uppercase tracking-[0.2em]" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <SkeletonCard key={i} />
@@ -89,7 +89,7 @@ export function DashboardPageSkeleton() {
       </div>
 
       {/* Pipeline monitor placeholder */}
-      <div className="glass-card p-6">
+      <div className="liquid-glass p-6">
         <div className="flex items-center gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="flex-1 flex items-center gap-3">
@@ -98,7 +98,7 @@ export function DashboardPageSkeleton() {
                 <Base className="h-[12px] w-2/3" />
                 <Base className="h-[20px] w-1/2" />
               </div>
-              {i < 4 && <div className="w-[40px] h-[2px] rounded bg-white/20" />}
+              {i < 4 && <div className="w-[40px] h-[2px] rounded bg-white/10" />}
             </div>
           ))}
         </div>
@@ -107,7 +107,7 @@ export function DashboardPageSkeleton() {
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="glass-card p-5 flex flex-col items-start gap-2">
+          <div key={i} className="liquid-glass p-5 flex flex-col items-start gap-2">
             <SkeletonCircle size={28} />
             <Base className="h-[24px] w-[60px]" />
             <Base className="h-[12px] w-[80px]" />
@@ -116,7 +116,7 @@ export function DashboardPageSkeleton() {
       </div>
 
       {/* Transcript area */}
-      <div className="glass-card p-5">
+      <div className="liquid-glass p-5">
         <Base className="h-[12px] w-[80px] mb-4" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -133,7 +133,7 @@ export function DashboardPageSkeleton() {
         <Base className="h-[12px] w-[100px] mb-4" />
         <div className="space-y-3">
           {[1, 2].map((i) => (
-            <div key={i} className="glass-card p-5 flex items-center justify-between">
+            <div key={i} className="liquid-glass p-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <SkeletonCircle size={32} />
                 <div className="space-y-2">
@@ -164,7 +164,7 @@ export function SettingsPageSkeleton() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* API Key section */}
-        <div className="glass-card p-6 space-y-5">
+        <div className="liquid-glass p-6 space-y-5">
           <div className="flex items-center justify-between">
             <SkeletonTitle className="w-[140px]" />
             <SkeletonPill className="w-[90px]" />
@@ -177,7 +177,7 @@ export function SettingsPageSkeleton() {
         </div>
 
         {/* OBS section */}
-        <div className="glass-card p-6 space-y-5">
+        <div className="liquid-glass p-6 space-y-5">
           <div className="flex items-center justify-between">
             <SkeletonTitle className="w-[160px]" />
             <SkeletonPill className="w-[90px]" />
@@ -191,7 +191,7 @@ export function SettingsPageSkeleton() {
         </div>
 
         {/* TTS section */}
-        <div className="glass-card p-6 space-y-5">
+        <div className="liquid-glass p-6 space-y-5">
           <SkeletonTitle className="w-[120px]" />
           <SkeletonInput />
           <div className="space-y-2">
@@ -202,7 +202,7 @@ export function SettingsPageSkeleton() {
         </div>
 
         {/* Stream settings section */}
-        <div className="glass-card p-6 space-y-5">
+        <div className="liquid-glass p-6 space-y-5">
           <SkeletonTitle className="w-[140px]" />
           <SkeletonInput />
           <SkeletonInput />
@@ -230,7 +230,7 @@ export function ChannelsPageSkeleton() {
       {/* Channel cards grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="glass-card p-5 space-y-4">
+          <div key={i} className="liquid-glass p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <SkeletonCircle size={32} />

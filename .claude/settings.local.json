@@ -76,7 +76,13 @@
       "Bash(echo \"push_exit=$?\")",
       "Bash(echo \"tsc_exit=$?\")",
       "Bash(npx tsc *)",
-      "Bash(echo \"exit=$?\")"
+      "Bash(echo \"exit=$?\")",
+      "PowerShell(uv tool *)",
+      "Bash(pipx list *)",
+      "Bash(uv tool *)",
+      "Bash(python -c \"import graphify; print\\(graphify.__file__\\)\")",
+      "Bash(pip install *)",
+      "Bash(python *)"
     ]
   },
   "enableAllProjectMcpServers": true,

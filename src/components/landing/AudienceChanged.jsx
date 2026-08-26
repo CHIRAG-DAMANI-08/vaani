@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Globe, AudioLines, Youtube } from "lucide-react";
+import { Globe, Waveform, YoutubeLogo } from "@phosphor-icons/react";
 import { fadeUp } from "../../lib/motion";
 
 const cards = [
@@ -9,12 +9,12 @@ const cards = [
     desc: "Your audience no longer speaks one language. They arrive from every corner, expecting to understand you instantly.",
   },
   {
-    Icon: AudioLines,
+    Icon: Waveform,
     title: "Native audio",
     desc: "Subtitles are not enough. Viewers stay when they hear a natural voice speaking directly to them.",
   },
   {
-    Icon: Youtube,
+    Icon: YoutubeLogo,
     title: "YouTube reach",
     desc: "Broadcast one source to localized channels and let the algorithm surface you to audiences you never had.",
   },

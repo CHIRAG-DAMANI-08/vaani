@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Loader2, ArrowRight } from "lucide-react";
+import { CircleNotch, ArrowRight } from "@phosphor-icons/react";
 import { LANGUAGE_REGISTRY } from "@/lib/language-registry";
 import { GlassCard } from "@/app/components/GlassCard";
 
@@ -152,7 +152,7 @@ export function StatusRow() {
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-3 py-12">
-        <Loader2 className="w-5 h-5 text-neutral-500 animate-spin" />
+        <CircleNotch className="w-5 h-5 text-neutral-500 animate-spin" />
         <p className="text-xs text-neutral-400 font-sans">
           Loading language channels...
         </p>
@@ -218,7 +218,7 @@ export function StatusRow() {
                 href="/channels"
                 className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-neutral-400 group-hover:text-white group-hover:bg-white/15 transition-all"
               >
-                <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.6} />
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </GlassCard>

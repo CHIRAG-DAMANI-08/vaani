@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Clock, AlertCircle } from "lucide-react";
+import { Clock } from "@phosphor-icons/react";
 import Link from "next/link";
 
 export default function BetaPendingPage() {

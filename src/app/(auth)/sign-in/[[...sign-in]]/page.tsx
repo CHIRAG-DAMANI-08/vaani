@@ -5,7 +5,7 @@ import { logger } from "@/lib/logger";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeSlash, CircleNotch } from "@phosphor-icons/react";
 
 export default function SignInPage() {
   const { signIn, errors, fetchStatus } = useSignIn();
@@ -196,7 +196,7 @@ export default function SignInPage() {
             disabled={isLoading}
             className="w-full rounded-xl bg-[#f0f0f0] hover:bg-[#e4e4e4] active:scale-[0.98] text-black font-medium py-3 text-[14px] transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isLoading && <CircleNotch className="w-4 h-4 animate-spin" />}
             Verify
           </button>
         </form>
@@ -248,7 +248,7 @@ export default function SignInPage() {
         className="w-full rounded-xl border border-black/10 bg-white hover:bg-black/[0.02] active:scale-[0.98] text-black font-medium py-3 text-[14px] transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-3"
       >
         {googleLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <CircleNotch className="w-4 h-4 animate-spin" />
         ) : (
           <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -309,7 +309,7 @@ export default function SignInPage() {
                 tabIndex={-1}
               >
                 {showPassword ? (
-                  <EyeOff className="w-4 h-4" />
+                  <EyeSlash className="w-4 h-4" />
                 ) : (
                   <Eye className="w-4 h-4" />
                 )}
@@ -333,7 +333,7 @@ export default function SignInPage() {
           disabled={isLoading}
           className="w-full rounded-xl bg-[#f0f0f0] hover:bg-[#e4e4e4] active:scale-[0.98] text-black font-medium py-3 text-[14px] transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+          {isLoading && <CircleNotch className="w-4 h-4 animate-spin" />}
           {passwordEnabled ? "Continue" : "Send code"}
         </button>
       </form>

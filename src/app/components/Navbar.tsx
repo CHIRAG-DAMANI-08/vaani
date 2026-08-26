@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useAuth, UserButton } from "@clerk/nextjs";
-import { Menu, X } from "lucide-react";
+import { List, X } from "@phosphor-icons/react";
 import { Logo } from "./Logo";
 
 const navLinks = [
@@ -137,7 +137,7 @@ export const Navbar = () => {
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
         >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          {mobileOpen ? <X size={20} /> : <List size={20} />}
         </button>
       </div>
 

@@ -4,16 +4,16 @@ import { useState, useEffect, useCallback } from "react";
 import { logger } from "@/lib/logger";
 import {
   Plus,
-  Pencil,
-  Trash2,
+  PencilSimple,
+  Trash,
   Eye,
-  EyeOff,
+  EyeSlash,
   Check,
   X,
-  Loader2,
-  Radio,
-  ExternalLink,
-} from "lucide-react";
+  CircleNotch,
+  Broadcast,
+  ArrowSquareOut,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { GlassCard } from "@/app/components/GlassCard";
 import { useCSRF } from "@/lib/use-csrf";
@@ -174,7 +174,7 @@ export default function ChannelsPage() {
       {/* Channels List */}
       {loading ? (
         <div className="flex items-center justify-center gap-3 py-16">
-          <Loader2 className="w-5 h-5 text-neutral-500 animate-spin" />
+          <CircleNotch className="w-5 h-5 text-neutral-500 animate-spin" />
           <p className="text-xs text-neutral-400 font-sans">
             Loading channels...
           </p>
@@ -235,7 +235,7 @@ export default function ChannelsPage() {
                     <div className="space-y-4">
                       {/* RTMP Row in bordered inset box */}
                       <div className="liquid-glass border border-white/10 rounded-xl p-3 flex items-center gap-2">
-                        <Radio className="w-4 h-4 text-neutral-400 shrink-0" strokeWidth={1.6} />
+                        <Broadcast className="w-4 h-4 text-neutral-400 shrink-0" />
                         <p className="font-mono text-xs text-neutral-300 truncate">
                           {ch.rtmpUrl || "rtmp://a.rtmp.youtube.com/live2"}
                         </p>
@@ -270,13 +270,13 @@ export default function ChannelsPage() {
                             onClick={() => startEdit(ch)}
                             className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                           >
-                            <Pencil className="w-4 h-4" strokeWidth={1.6} />
+                            <PencilSimple className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteConfirm(ch.id)}
                             className="p-2 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
                           >
-                            <Trash2 className="w-4 h-4" strokeWidth={1.6} />
+                            <Trash className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
@@ -314,7 +314,7 @@ export default function ChannelsPage() {
                           onClick={() => startEdit(ch)}
                           className="w-full py-3.5 border border-dashed border-white/20 hover:border-white/40 rounded-xl text-xs font-medium text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer"
                         >
-                          <Plus className="w-4 h-4" strokeWidth={1.6} />
+                          <Plus className="w-4 h-4" />
                           <span>Configure channel</span>
                         </button>
                       )}
@@ -359,9 +359,9 @@ export default function ChannelsPage() {
                                 tabIndex={-1}
                               >
                                 {showRtmpKey ? (
-                                  <EyeOff className="w-4 h-4" strokeWidth={1.6} />
+                                  <EyeSlash className="w-4 h-4" />
                                 ) : (
-                                  <Eye className="w-4 h-4" strokeWidth={1.6} />
+                                  <Eye className="w-4 h-4" />
                                 )}
                               </button>
                             </div>
@@ -375,7 +375,7 @@ export default function ChannelsPage() {
                             className="text-xs font-sans text-neutral-400 hover:text-white inline-flex items-center gap-1 transition-colors"
                           >
                             Where to find your stream key{" "}
-                            <ExternalLink className="w-3 h-3" strokeWidth={1.6} />
+                            <ArrowSquareOut className="w-3 h-3" />
                           </a>
 
                           {/* Form Action Buttons */}
@@ -386,9 +386,9 @@ export default function ChannelsPage() {
                               className="px-4 py-2 rounded-full text-xs font-semibold bg-white text-black hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-2"
                             >
                               {saving ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <CircleNotch className="w-3.5 h-3.5 animate-spin" />
                               ) : (
-                                <Check className="w-3.5 h-3.5" strokeWidth={1.6} />
+                                <Check className="w-3.5 h-3.5" />
                               )}
                               {saving ? "Saving..." : "Save"}
                             </button>
@@ -396,7 +396,7 @@ export default function ChannelsPage() {
                               onClick={cancelEdit}
                               className="px-4 py-2 rounded-full text-xs font-medium text-neutral-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2 cursor-pointer"
                             >
-                              <X className="w-3.5 h-3.5" strokeWidth={1.6} />
+                              <X className="w-3.5 h-3.5" />
                               Cancel
                             </button>
                           </div>

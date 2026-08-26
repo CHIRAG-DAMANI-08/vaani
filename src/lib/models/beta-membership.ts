@@ -13,9 +13,6 @@ const betaMembershipSchema = new Schema(
     },
     clerkUserId: {
       type: String,
-      index: true,
-      unique: true,
-      sparse: true, // null allowed until claimed
       default: null,
     },
     status: {
@@ -42,5 +39,14 @@ const betaMembershipSchema = new Schema(
   }
 );
 
+// Only enforce uniqueness for non-null string clerkUserIds
+betaMembershipSchema.index(
+  { clerkUserId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { clerkUserId: { $type: "string" } },
+  }
+);
+
 export const BetaMembership =
-  models.BetaMembership || model("BetaMembership", betaMembershipSchema);
+  models.BetaMembership || model("BetaMembership", betaMembershipSchema);

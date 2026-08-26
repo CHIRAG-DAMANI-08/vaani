@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, CheckCircle2, Loader2, Mail } from "lucide-react";
+import { WarningCircle, CheckCircle, CircleNotch, Envelope } from "@phosphor-icons/react";
 import { ContentPageShell } from "@/app/components/ContentPageShell";
 import { sendContact } from "@/app/actions/send-contact";
 import { CONTACT_EMAIL } from "@/lib/legal/constants";
@@ -104,7 +104,7 @@ export default function ContactPage() {
                   exit={{ opacity: 0, height: 0 }}
                   className="flex items-start gap-2 rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-xs text-green-400"
                 >
-                  <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+                  <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0" />
                   <p>{state.message}</p>
                 </motion.div>
               )}
@@ -115,7 +115,7 @@ export default function ContactPage() {
                   exit={{ opacity: 0, height: 0 }}
                   className="flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400"
                 >
-                  <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                  <WarningCircle size={16} weight="bold" className="mt-0.5 shrink-0" />
                   <p>{state.message}</p>
                 </motion.div>
               )}
@@ -126,7 +126,7 @@ export default function ContactPage() {
               disabled={pending}
               className="flex w-full items-center justify-center rounded-full bg-foreground px-6 py-4 text-base font-medium text-background transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
             >
-              {pending ? <Loader2 size={20} className="animate-spin" /> : "Send message"}
+              {pending ? <CircleNotch size={20} className="animate-spin" /> : "Send message"}
             </button>
           </div>
         </motion.form>
@@ -136,7 +136,7 @@ export default function ContactPage() {
             href={`mailto:${CONTACT_EMAIL}`}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors duration-300 hover:text-foreground"
           >
-            <Mail size={16} /> {CONTACT_EMAIL}
+            <Envelope size={16} /> {CONTACT_EMAIL}
           </a>
           <p className="text-xs text-muted-foreground/70">
             For privacy or copyright requests, see our Privacy Policy and Terms of Service.

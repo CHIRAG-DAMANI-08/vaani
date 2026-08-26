@@ -2,7 +2,7 @@
 
 // Refreshed SSR safe component - Model & Speaker mapped
 import { useState, useEffect, useRef } from "react";
-import { FlaskConical, Play, Pause, Loader2, AlertCircle, ChevronDown, ChevronUp, Mic } from "lucide-react";
+import { Flask, Play, Pause, CircleNotch, WarningCircle, CaretDown, CaretUp, Microphone } from "@phosphor-icons/react";
 import { LANGUAGE_REGISTRY } from "@/lib/language-registry";
 import { GlassCard } from "@/app/components/GlassCard";
 import { useCSRF } from "@/lib/use-csrf";
@@ -173,7 +173,7 @@ export function TestModePanel() {
       >
         <div className="flex items-center gap-3.5">
           <div className="w-9 h-9 rounded-xl liquid-glass border border-white/10 flex items-center justify-center text-white">
-            <FlaskConical className="w-4 h-4" strokeWidth={1.6} />
+            <Flask className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2.5">
@@ -188,7 +188,7 @@ export function TestModePanel() {
           </div>
         </div>
         <button className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors">
-          {collapsed ? <ChevronDown className="w-4 h-4" strokeWidth={1.6} /> : <ChevronUp className="w-4 h-4" strokeWidth={1.6} />}
+          {collapsed ? <CaretDown className="w-4 h-4" /> : <CaretUp className="w-4 h-4" />}
         </button>
       </div>
 
@@ -267,7 +267,7 @@ export function TestModePanel() {
                       : "liquid-glass border-white/10 text-neutral-400 hover:text-white hover:border-white/25"
                   }`}
                 >
-                  <Mic className="w-3.5 h-3.5" strokeWidth={1.6} />
+                  <Microphone className="w-3.5 h-3.5" />
                   <span>{spk.name}</span>
                 </button>
               ))}
@@ -282,9 +282,9 @@ export function TestModePanel() {
               className="flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold text-black bg-white hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm"
             >
               {loading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <CircleNotch className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <Play className="w-3.5 h-3.5 fill-current" />
+                <Play className="w-3.5 h-3.5" weight="fill" />
               )}
               {loading ? "Processing..." : "Test Pipeline"}
             </button>
@@ -299,7 +299,7 @@ export function TestModePanel() {
 
           {error && (
             <div className="flex items-start gap-2 p-3 rounded-xl bg-red-950/30 border border-red-500/30">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" strokeWidth={1.6} />
+              <WarningCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" weight="bold" />
               <p className="text-xs font-sans text-red-300">{error}</p>
             </div>
           )}
@@ -353,12 +353,12 @@ export function TestModePanel() {
                         >
                           {isPlaying ? (
                             <>
-                              <Pause className="w-3.5 h-3.5 fill-current" />
+                              <Pause className="w-3.5 h-3.5" weight="fill" />
                               <span>Pause</span>
                             </>
                           ) : (
                             <>
-                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <Play className="w-3.5 h-3.5" weight="fill" />
                               <span>Listen Audio</span>
                             </>
                           )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Eye, EyeOff, Check, Loader2, ExternalLink, AlertCircle } from "lucide-react";
+import { Eye, EyeSlash, Check, CircleNotch, ArrowSquareOut, WarningCircle } from "@phosphor-icons/react";
 import { useCSRF } from "@/lib/use-csrf";
 import OBSWebSocket from "obs-websocket-js";
 
@@ -245,20 +245,20 @@ export function OnboardingModal({ onClose }: { onClose?: () => void }) {
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
                   tabIndex={-1}
                 >
-                  {step1State === "success" ? <Check className="w-4 h-4 text-[#10B981]" /> : showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {step1State === "success" ? <Check className="w-4 h-4 text-[#10B981]" /> : showKey ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
 
               <div className="flex justify-end mb-4">
                 <a href="https://www.sarvam.ai" target="_blank" rel="noopener noreferrer" className="text-[12px] font-dm-sans font-medium text-[#F5821F] hover:text-[#E8690A] inline-flex items-center gap-1 transition-colors">
-                  Get your Sarvam API key <ExternalLink className="w-3 h-3" />
+                  Get your Sarvam API key <ArrowSquareOut className="w-3 h-3" />
                 </a>
               </div>
 
               <div className="h-[40px] flex items-start">
                 {errorCode1 && (
                   <div className="flex items-start gap-2 animate-[fade-in_150ms_ease]">
-                    <AlertCircle className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
+                    <WarningCircle className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" weight="bold" />
                     <p className="text-[12px] font-dm-sans text-[#EF4444] leading-[1.5]">
                       {currentErrorMsg || "Something went wrong."}
                       {errorCode1 === "RATE_LIMIT_EXCEEDED" && countdown > 0 && <span className="font-mono font-bold ml-1">{formatCountdown(countdown)}</span>}
@@ -275,7 +275,7 @@ export function OnboardingModal({ onClose }: { onClose?: () => void }) {
                     step1State === "success" ? "bg-[#10B981] text-white" : step1State === "loading" ? "bg-gray-900 text-white opacity-80" : canSubmitStep1 ? "bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.98]" : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   }`}
                 >
-                  {step1State === "loading" && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {step1State === "loading" && <CircleNotch className="w-4 h-4 animate-spin" />}
                   {step1State === "success" && <Check className="w-4 h-4" />}
                   {step1State === "loading" ? "" : step1State === "success" ? "Continuing..." : "Validate and continue"}
                 </button>
@@ -341,21 +341,21 @@ export function OnboardingModal({ onClose }: { onClose?: () => void }) {
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
                     tabIndex={-1}
                   >
-                    {showObsPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showObsPassword ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
               <div className="flex justify-end mb-4">
                 <a href="https://github.com/obsproject/obs-websocket" target="_blank" rel="noopener noreferrer" className="text-[12px] font-dm-sans font-medium text-[#F5821F] hover:text-[#E8690A] inline-flex items-center gap-1 transition-colors">
-                  How to enable OBS WebSocket <ExternalLink className="w-3 h-3" />
+                  How to enable OBS WebSocket <ArrowSquareOut className="w-3 h-3" />
                 </a>
               </div>
 
               <div className="h-[40px] flex items-start">
                 {errorCode2 && (
                   <div className="flex items-start gap-2 animate-[fade-in_150ms_ease]">
-                    <AlertCircle className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
+                    <WarningCircle className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" weight="bold" />
                     <p className="text-[12px] font-dm-sans text-[#EF4444] leading-[1.5]">
                       {currentErrorMsg || "Something went wrong."}
                       {errorCode2 === "RATE_LIMIT_EXCEEDED" && countdown > 0 && <span className="font-mono font-bold ml-1">{formatCountdown(countdown)}</span>}
@@ -379,7 +379,7 @@ export function OnboardingModal({ onClose }: { onClose?: () => void }) {
                     step2State === "success" ? "bg-[#10B981] text-white" : step2State === "loading" ? "bg-gray-900 text-white opacity-80" : canSubmitStep2 ? "bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.98]" : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   }`}
                 >
-                  {step2State === "loading" && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {step2State === "loading" && <CircleNotch className="w-4 h-4 animate-spin" />}
                   {step2State === "success" && <Check className="w-4 h-4" />}
                   {step2State === "loading" ? "" : step2State === "success" ? "Continuing..." : "Connect and continue"}
                 </button>

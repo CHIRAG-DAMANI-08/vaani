@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 
 export default function BetaAcceptedClient() {
@@ -37,7 +37,7 @@ export default function BetaAcceptedClient() {
         className="w-full max-w-md text-center"
       >
         <div className="w-20 h-20 mx-auto mb-6 bg-green-500/10 text-green-400 rounded-full flex items-center justify-center">
-          <CheckCircle2 size={40} />
+          <CheckCircle size={40} weight="fill" />
         </div>
         <h1 className="text-3xl font-normal mb-3 text-white" style={{ fontFamily: "var(--font-playfair)" }}>
           You're on the List!

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Mic } from "lucide-react";
+import { Microphone } from "@phosphor-icons/react";
 import { GlassCard } from "@/app/components/GlassCard";
 
 const SPEAKERS = [
@@ -101,7 +101,7 @@ export function TTSSettingsSection() {
       <div className="p-6 pb-4 border-b border-white/10">
         <div className="flex items-center gap-3.5">
           <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-white shrink-0">
-            <Mic className="w-4 h-4" strokeWidth={1.6} />
+            <Microphone className="w-4 h-4" />
           </div>
           <div>
             <h2 className="text-base font-sans font-bold text-white tracking-tight">Voice &amp; Language</h2>
@@ -124,6 +124,30 @@ export function TTSSettingsSection() {
         </div>
 
 
+        {/* Pace / Speed Slider */}
+        <div className="h-px bg-white/10" />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-sans font-semibold text-neutral-400 uppercase tracking-wider">
+              Speech Pace
+            </label>
+            <span className="text-xs font-sans font-medium text-white tabular-nums">
+              {formatPaceLabel(pace)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0.5"
+            max="2.0"
+            step="0.1"
+            value={pace}
+            onChange={handlePaceChange}
+            className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-white [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-white/20 [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+          />
+          <p className="text-[11px] font-sans text-neutral-500">
+            Adjusts how fast the translated speech is spoken.
+          </p>
+        </div>
 
         <div className="h-px bg-white/10" />
 

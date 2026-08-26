@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Calendar, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import { Clock, Calendar, ChatCircleDots, CaretDown, CaretUp } from "@phosphor-icons/react";
 import { useState } from "react";
 import { GlassCard } from "@/app/components/GlassCard";
 
@@ -43,7 +43,7 @@ export function PastSessions({ sessions }: { sessions: any[] }) {
               >
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2 text-white font-sans text-sm font-medium">
-                    <Calendar className="w-4 h-4 text-neutral-400" strokeWidth={1.6} />
+                    <Calendar className="w-4 h-4 text-neutral-400" />
                     <span>
                       {new Date(s.startedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -51,7 +51,7 @@ export function PastSessions({ sessions }: { sessions: any[] }) {
                   
                   <div className="hidden md:flex items-center gap-6 text-neutral-400 text-xs">
                     <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-neutral-400" strokeWidth={1.6} />
+                      <Clock className="w-3.5 h-3.5 text-neutral-400" />
                       {durationMins} min
                     </div>
                     <div className="flex items-center gap-1.5 font-serif italic text-sm text-white">
@@ -69,9 +69,9 @@ export function PastSessions({ sessions }: { sessions: any[] }) {
                     ))}
                   </div>
                   {isExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-neutral-400" strokeWidth={1.6} />
+                    <CaretUp className="w-4 h-4 text-neutral-400" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-neutral-400" strokeWidth={1.6} />
+                    <CaretDown className="w-4 h-4 text-neutral-400" />
                   )}
                 </div>
               </div>
@@ -79,7 +79,7 @@ export function PastSessions({ sessions }: { sessions: any[] }) {
               {isExpanded && (
                 <div className="border-t border-white/10 bg-black/40 p-5 max-h-[280px] overflow-y-auto font-sans text-xs leading-relaxed text-neutral-300 space-y-2">
                   <div className="flex items-center gap-2 mb-3 text-neutral-400">
-                     <MessageSquare className="w-4 h-4" strokeWidth={1.6} />
+                     <ChatCircleDots className="w-4 h-4" />
                      <span className="text-[10px] font-semibold uppercase tracking-wider">Final Transcript</span>
                   </div>
                   {s.transcript && s.transcript.length > 0 ? (

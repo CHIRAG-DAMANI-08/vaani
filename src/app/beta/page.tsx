@@ -16,11 +16,10 @@ export default function BetaPage() {
       {/* Navbar - reuse landing navbar */}
       <header className="w-full border-b border-white/10 bg-white/[0.02] backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2" aria-label="Vaani Home">
-            <svg className="w-8 h-8 text-white" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-              <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" />
-              <path d="M10 16c0-3.3 2.7-6 6-6s6 2.7 6 6-2.7 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
+          <a href="/" className="flex items-center gap-2.5" aria-label="Vaani Home">
+            <span className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+            </span>
             <span className="font-serif text-xl font-medium text-white">Vaani</span>
           </a>
         </div>

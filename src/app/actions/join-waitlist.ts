@@ -101,16 +101,44 @@ export async function joinWaitlist(
       { upsert: true, new: true }
     );
 
+    // Also sync to BetaApplication so it appears in the live admin console
+    try {
+      const { BetaApplication } = await import("@/lib/models/beta-application");
+      const normalized = parsed.data.email.toLowerCase().trim();
+      const existingApp = await BetaApplication.findOne({
+        $or: [{ email: normalized }, { normalizedEmail: normalized }],
+      });
+      if (!existingApp) {
+        await BetaApplication.create({
+          email: normalized,
+          name: parsed.data.name || null,
+          interests: parsed.data.feature_interest ? [parsed.data.feature_interest] : [],
+          status: "pending",
+          attemptCount: 1,
+          emailSent: false,
+        });
+      }
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to mirror waitlist entry to beta application");
+    }
+
     // Send branded confirmation email via SMTP (same template as join-beta)
-    const displayName = entry?.name ?? parsed.data.name ?? "there";
+    const rawName = (entry?.name ?? parsed.data.name ?? "").trim();
+    const fallbackUsername = parsed.data.email.split("@")[0].replace(/[._-]/g, " ");
+    const cleanFallback = fallbackUsername ? fallbackUsername.charAt(0).toUpperCase() + fallbackUsername.slice(1) : "there";
+    const displayName = rawName.length > 0 ? rawName : cleanFallback;
     const html = `
-      <div style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,’Segoe UI’,sans-serif;">
+      <div style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
         <div style="max-width:520px;margin:0 auto;padding:48px 24px;">
-          <div style="text-align:center;margin-bottom:36px;">
-            <div style="width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.03);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;">
-              <span style="font-family:Georgia,serif;font-style:italic;font-size:20px;color:#fff;">V</span>
-            </div>
-            <div style="font-family:Georgia,serif;font-style:italic;font-size:18px;color:#fff;letter-spacing:0.02em;">Vaani</div>
+          <div style="text-align:center;margin-bottom:32px;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 12px;border-collapse:collapse;">
+              <tr>
+                <td align="center" valign="middle" style="width:42px;height:42px;border-radius:50%;border:2px solid #ffffff;background:rgba(255,255,255,0.05);text-align:center;vertical-align:middle;padding:0;">
+                  <div style="width:14px;height:14px;border-radius:50%;background:#EF4444;margin:0 auto;display:inline-block;vertical-align:middle;">&nbsp;</div>
+                </td>
+              </tr>
+            </table>
+            <div style="font-family:Georgia,serif;font-style:italic;font-size:22px;color:#fff;letter-spacing:0.03em;">vaani</div>
           </div>
 
           <div style="border:1px solid rgba(255,255,255,0.08);border-radius:16px;background:rgba(255,255,255,0.02);padding:40px 32px;text-align:center;">
