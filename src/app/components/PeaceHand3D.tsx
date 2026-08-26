@@ -83,8 +83,8 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
     const targetScale = 1.95;
     // Flipped 180 degrees: -90 degrees (-Math.PI / 2) around Y
     const baseRotationY = -Math.PI / 2;
-    const targetRotation = { x: 0, y: 0 };
-    const currentRotation = { x: 0, y: 0 };
+    const targetRotation = { x: 0, y: 0, z: 0 };
+    const currentRotation = { x: 0, y: 0, z: 0 };
     const targetPos = { x: 0, y: 0 };
     const currentPos = { x: 0, y: 0 };
 
@@ -196,18 +196,19 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
 
     loadAssets();
 
-    // Mouse movement handler (Inverted tracking)
+    // Mouse movement handler with expressive angle in every direction
     const handleMouseMove = (e: MouseEvent) => {
       const normX = e.clientX / window.innerWidth - 0.5;
       const normY = e.clientY / window.innerHeight - 0.5;
 
-      // Inverted rotation: moving mouse right rotates hand to the left
-      targetRotation.y = -normX * 0.6;
-      targetRotation.x = -normY * 0.4;
+      // Inverted rotation: wide angles across yaw, pitch, and roll
+      targetRotation.y = -normX * 1.55;
+      targetRotation.x = -normY * 1.35;
+      targetRotation.z = -normX * 0.35;
 
-      // Inverted subtle position shift
-      targetPos.x = -normX * 0.18;
-      targetPos.y = normY * 0.15;
+      // Inverted position shift
+      targetPos.x = -normX * 0.42;
+      targetPos.y = normY * 0.32;
 
       onCoordsChange?.({
         x: Math.round(e.clientX),
@@ -241,14 +242,16 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
           model.scale.setScalar(currentScale);
         }
 
-        // Damping / Spring interpolation
-        currentRotation.x += (targetRotation.x - currentRotation.x) * 0.05;
-        currentRotation.y += (targetRotation.y - currentRotation.y) * 0.05;
-        currentPos.x += (targetPos.x - currentPos.x) * 0.05;
-        currentPos.y += (targetPos.y - currentPos.y) * 0.05;
+        // Damping / Spring interpolation across all axes
+        currentRotation.x += (targetRotation.x - currentRotation.x) * 0.055;
+        currentRotation.y += (targetRotation.y - currentRotation.y) * 0.055;
+        currentRotation.z += (targetRotation.z - currentRotation.z) * 0.055;
+        currentPos.x += (targetPos.x - currentPos.x) * 0.055;
+        currentPos.y += (targetPos.y - currentPos.y) * 0.055;
 
         model.rotation.x = currentRotation.x;
         model.rotation.y = baseRotationY + currentRotation.y;
+        model.rotation.z = currentRotation.z;
         model.position.x = currentPos.x;
         model.position.y = -0.08 + currentPos.y;
       }
