@@ -51,26 +51,32 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
     container.appendChild(renderer.domElement);
 
     // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.6);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    const mainLight = new THREE.DirectionalLight(0xffffff, 2.5);
     mainLight.position.set(3, 4, 5);
     scene.add(mainLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 1.2);
     fillLight.position.set(-4, -2, 3);
     scene.add(fillLight);
 
-    const backLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    backLight.position.set(0, 5, -4);
-    scene.add(backLight);
+    const topRimLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    topRimLight.position.set(0, 5, -3);
+    scene.add(topRimLight);
 
-    // Texture Loader
+    // Texture Loader with flipY: false for GLTF compatibility
     const textureLoader = new THREE.TextureLoader();
+    
     const normalMap = textureLoader.load("/3d/o-1024-normal.webp");
+    normalMap.flipY = false;
+
     const roughnessMap = textureLoader.load("/3d/o-1024-roughness.webp");
+    roughnessMap.flipY = false;
+
     const ringNormalMap = textureLoader.load("/3d/o-512-ring-normal.webp");
+    ringNormalMap.flipY = false;
 
     let model: THREE.Group | null = null;
     const targetRotation = { x: 0, y: 0 };
@@ -92,20 +98,22 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
             mesh.castShadow = true;
             mesh.receiveShadow = true;
 
-            const matName = mesh.name.toLowerCase();
+            const matName = (mesh.name || "").toLowerCase();
             if (matName.includes("ring")) {
               mesh.material = new THREE.MeshStandardMaterial({
-                color: 0x111111,
-                roughness: 0.2,
-                metalness: 0.9,
+                color: 0x181818,
+                roughness: 0.15,
+                metalness: 0.95,
                 normalMap: ringNormalMap,
+                normalScale: new THREE.Vector2(1.2, 1.2),
               });
             } else {
               mesh.material = new THREE.MeshStandardMaterial({
-                color: 0xf5f5f5,
-                roughness: 0.65,
-                metalness: 0.05,
+                color: 0xf6f6f6,
+                roughness: 0.6,
+                metalness: 0.04,
                 normalMap: normalMap,
+                normalScale: new THREE.Vector2(1.5, 1.5),
                 roughnessMap: roughnessMap,
               });
             }
@@ -116,8 +124,8 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
         const box = new THREE.Box3().setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());
         model.position.sub(center);
-        model.position.y -= 0.2; // Slight vertical adjustment
-        model.scale.setScalar(1.4);
+        model.position.y -= 0.18;
+        model.scale.setScalar(1.45);
 
         scene.add(model);
         setLoaded(true);
