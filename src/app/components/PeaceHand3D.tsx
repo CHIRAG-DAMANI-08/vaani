@@ -230,30 +230,37 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
 
     window.addEventListener("resize", handleResize);
 
-    // Render loop with slow, smooth scale entrance and damping
+    // Render loop with slow, smooth, and graceful damping
     let animationFrameId: number;
+    let clock = new THREE.Clock();
+
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
+      const elapsedTime = clock.getElapsedTime();
 
       if (model) {
-        // Slow, organic entrance scale from 0 to full size
+        // Slow, graceful entrance scale from 0 to full size
         if (currentScale < targetScale) {
-          currentScale += (targetScale - currentScale) * 0.016;
+          currentScale += (targetScale - currentScale) * 0.009;
           model.scale.setScalar(currentScale);
         }
 
-        // Damping / Spring interpolation across all axes
-        currentRotation.x += (targetRotation.x - currentRotation.x) * 0.055;
-        currentRotation.y += (targetRotation.y - currentRotation.y) * 0.055;
-        currentRotation.z += (targetRotation.z - currentRotation.z) * 0.055;
-        currentPos.x += (targetPos.x - currentPos.x) * 0.055;
-        currentPos.y += (targetPos.y - currentPos.y) * 0.055;
+        // Luxurious, weighty damping (0.022) for smooth, silky motion
+        currentRotation.x += (targetRotation.x - currentRotation.x) * 0.022;
+        currentRotation.y += (targetRotation.y - currentRotation.y) * 0.022;
+        currentRotation.z += (targetRotation.z - currentRotation.z) * 0.022;
+        currentPos.x += (targetPos.x - currentPos.x) * 0.022;
+        currentPos.y += (targetPos.y - currentPos.y) * 0.022;
+
+        // Subtle organic idle float
+        const idleFloatY = Math.sin(elapsedTime * 0.9) * 0.015;
+        const idleFloatRotZ = Math.cos(elapsedTime * 0.7) * 0.01;
 
         model.rotation.x = currentRotation.x;
         model.rotation.y = baseRotationY + currentRotation.y;
-        model.rotation.z = currentRotation.z;
+        model.rotation.z = currentRotation.z + idleFloatRotZ;
         model.position.x = currentPos.x;
-        model.position.y = -0.08 + currentPos.y;
+        model.position.y = -0.08 + currentPos.y + idleFloatY;
       }
 
       renderer.render(scene, camera);
