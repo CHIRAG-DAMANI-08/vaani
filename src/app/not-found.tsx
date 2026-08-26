@@ -1,10 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/app/components/Logo";
 import { PeaceHand3D } from "@/app/components/PeaceHand3D";
 
 export default function NotFound() {
+  const [funFact, setFunFact] = useState<string>("");
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/fun-fact")
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data?.fact) {
+          setFunFact(data.fact);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch fun fact:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#000000] text-[#FFFFFF] flex flex-col justify-between selection:bg-white selection:text-black relative overflow-hidden font-sans select-none">
       
@@ -97,9 +118,10 @@ export default function NotFound() {
         </nav>
       </header>
 
-      {/* Main Center Area: Exact 404 Viewport Typography in Light Grey (#A8A8A8) */}
-      <main className="flex-1 flex flex-col items-center justify-center relative z-10 pointer-events-none">
-        <h1 className="text-[30.5vw] min-[601px]:text-[26.25vw] leading-none tracking-[-0.04em] font-normal text-[#A8A8A8] flex items-center justify-center select-none drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
+      {/* Main Center Area: 404 Heading + Dynamic Fun Fact */}
+      <main className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 text-center">
+        {/* 404 Display Typography */}
+        <h1 className="text-[30.5vw] min-[601px]:text-[26.25vw] leading-none tracking-[-0.04em] font-normal text-[#A8A8A8] flex items-center justify-center select-none drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)] pointer-events-none">
           <span
             className="italic font-serif font-light text-[#A8A8A8]"
             style={{ fontFamily: "'Playfair Display', 'Instrument Serif', Georgia, serif" }}
@@ -109,10 +131,26 @@ export default function NotFound() {
           <span className="font-sans font-normal text-[#A8A8A8]">0</span>
           <span className="font-sans font-bold text-[#A8A8A8]">4</span>
         </h1>
+
+        {/* Dynamic Fun Fact & Notice */}
+        <div className="mt-[-2vw] sm:mt-[-1vw] max-w-xl flex flex-col items-center gap-2 px-4 pointer-events-auto">
+          {funFact && (
+            <p className="font-[family-name:var(--font-dm-sans)] text-[12px] sm:text-[14px] text-white/70 tracking-wide leading-relaxed font-normal transition-opacity duration-700 animate-in fade-in">
+              <span className="text-[#A8A8A8] font-medium uppercase text-[10px] sm:text-[11px] tracking-[0.2em] block mb-1">
+                Random Fact
+              </span>
+              &ldquo;{funFact}&rdquo;
+            </p>
+          )}
+
+          <p className="font-[family-name:var(--font-dm-sans)] text-[11px] sm:text-[13px] text-[#808080] tracking-[0.15em] uppercase font-medium mt-1">
+            anyways, that page does not exist.
+          </p>
+        </div>
       </main>
 
-      {/* Minimal bottom spacer without the button */}
-      <div className="h-10 sm:h-14 pointer-events-none" />
+      {/* Minimal bottom spacer */}
+      <div className="h-6 sm:h-10 pointer-events-none" />
     </div>
   );
 }
