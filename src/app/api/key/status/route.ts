@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/lib/models/user";
+import { BetaMembership } from "@/lib/models/beta-membership";
+import { BetaApplication } from "@/lib/models/beta-application";
 
 /**
  * GET /api/key/status
  *
- * Returns the current Sarvam API key status for the authenticated user.
+ * Returns the current Sarvam API key status and beta application preferences
+ * (obsSetup, sarvamPreference) for the authenticated user.
  * Never returns the encrypted key — only the masked display string.
  */
 export async function GET() {
@@ -33,10 +36,54 @@ export async function GET() {
       }
     ).lean();
 
+    // Resolve user beta application preferences
+    let obsSetup: "using_obs" | "needs_guide" = "using_obs";
+    let sarvamPreference: "need_key" | "bring_own" = "need_key";
+    let applicantName: string | null = null;
+
+    try {
+      const membership = await BetaMembership.findOne({ clerkUserId: userId }).lean();
+      let emailToLookup = membership?.applicationEmail;
+
+      if (!emailToLookup) {
+        const clerkUser = await currentUser();
+        emailToLookup = clerkUser?.primaryEmailAddress?.emailAddress?.toLowerCase().trim();
+      }
+
+      if (emailToLookup) {
+        const betaApp = await BetaApplication.findOne({
+          $or: [
+            { normalizedEmail: emailToLookup.toLowerCase().trim() },
+            { email: emailToLookup.toLowerCase().trim() },
+          ],
+        }).lean();
+
+        if (betaApp) {
+          if (betaApp.obsSetup === "needs_guide" || betaApp.obsSetup === "using_obs") {
+            obsSetup = betaApp.obsSetup;
+          }
+          if (betaApp.sarvamPreference === "need_key" || betaApp.sarvamPreference === "bring_own") {
+            sarvamPreference = betaApp.sarvamPreference;
+          }
+          if (betaApp.name) {
+            applicantName = betaApp.name;
+          }
+        }
+      }
+    } catch (prefErr) {
+      logger.warn({ err: prefErr, userId }, "Failed to resolve beta preferences in key status");
+    }
+
     // No user record or no key stored
     if (!user || !user.sarvamKeyEnc) {
       return NextResponse.json(
-        { connected: false, onboardingComplete: !!user?.onboardingComplete },
+        {
+          connected: false,
+          onboardingComplete: !!user?.onboardingComplete,
+          obsSetup,
+          sarvamPreference,
+          applicantName,
+        },
         { status: 200 }
       );
     }
@@ -49,6 +96,9 @@ export async function GET() {
         updatedAt: user.sarvamKeyUpdatedAt
           ? new Date(user.sarvamKeyUpdatedAt).toISOString()
           : null,
+        obsSetup,
+        sarvamPreference,
+        applicantName,
       },
       { status: 200 }
     );
