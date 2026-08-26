@@ -157,11 +157,11 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
                     normalScale: new THREE.Vector2(2.5, 2.5),
                   });
                 } else {
-                  // Hand mesh: Emoji_lowUV
+                  // Hand mesh: Emoji_lowUV - soft grey clay tone
                   mesh.material = new THREE.MeshStandardMaterial({
-                    color: 0xf5f5f5,
-                    roughness: 0.52,
-                    metalness: 0.02,
+                    color: 0xcccccc,
+                    roughness: 0.56,
+                    metalness: 0.03,
                     normalMap: normalMap,
                     normalScale: new THREE.Vector2(3.5, 3.5),
                     roughnessMap: roughnessMap,
