@@ -19,6 +19,8 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
     const container = mountRef.current;
     if (!container) return;
 
+    let isDisposed = false;
+
     // Check WebGL support
     try {
       const canvas = document.createElement("canvas");
@@ -37,8 +39,8 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
 
     // Scene, Camera, Renderer
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
-    camera.position.set(0, 0, 4.2);
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+    camera.position.set(0, 0, 4.4);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -48,115 +50,151 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
+    renderer.toneMappingExposure = 1.3;
     container.appendChild(renderer.domElement);
 
-    // Studio Lighting for high-definition normal map ridges
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.8);
+    // Studio Grazing Lighting to strongly reveal normal map sculpt depth
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
     scene.add(ambientLight);
 
-    // Key Light at oblique angle to accentuate normal map surface texture
-    const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
-    keyLight.position.set(4, 5, 4.5);
-    scene.add(keyLight);
+    // Grazing Key Light from top-right
+    const grazingKey = new THREE.DirectionalLight(0xffffff, 3.8);
+    grazingKey.position.set(5, 5, 3.5);
+    scene.add(grazingKey);
 
-    // Secondary fill light
-    const fillLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    fillLight.position.set(-5, -2, 3);
-    scene.add(fillLight);
+    // Side Fill Light from left
+    const sideFill = new THREE.DirectionalLight(0xffffff, 2.2);
+    sideFill.position.set(-5, 2, 2.5);
+    scene.add(sideFill);
 
-    // Strong Top/Back Rim Light for silhouette edge illumination
-    const rimLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    // Front soft light
+    const frontFill = new THREE.DirectionalLight(0xffffff, 1.2);
+    frontFill.position.set(0, 0, 5);
+    scene.add(frontFill);
+
+    // Sharp top-back rim light
+    const rimLight = new THREE.DirectionalLight(0xffffff, 3.0);
     rimLight.position.set(0, 6, -3.5);
     scene.add(rimLight);
 
-    // Front Point Light for specular bounce on the ring and clay
-    const pointLight = new THREE.PointLight(0xffffff, 2.2, 12);
-    pointLight.position.set(1.5, 1.5, 3.5);
-    scene.add(pointLight);
-
-    // Texture Loader with correct ColorSpace & flipY for normal maps
-    const textureLoader = new THREE.TextureLoader();
-    
-    const normalMap = textureLoader.load("/3d/o-1024-normal.webp");
-    normalMap.flipY = false;
-    normalMap.colorSpace = THREE.NoColorSpace;
-
-    const roughnessMap = textureLoader.load("/3d/o-1024-roughness.webp");
-    roughnessMap.flipY = false;
-    roughnessMap.colorSpace = THREE.NoColorSpace;
-
-    const ringNormalMap = textureLoader.load("/3d/o-512-ring-normal.webp");
-    ringNormalMap.flipY = false;
-    ringNormalMap.colorSpace = THREE.NoColorSpace;
-
     let model: THREE.Group | null = null;
     let currentScale = 0;
-    const targetScale = 3.1; // Substantially larger hand to match Clayboan hero
-    // Flip 180 degrees: -90 degrees (-Math.PI / 2) around Y
+    // Balanced scale so the entire hand cleanly fits the viewport
+    const targetScale = 1.95;
+    // Flipped 180 degrees: -90 degrees (-Math.PI / 2) around Y
     const baseRotationY = -Math.PI / 2;
     const targetRotation = { x: 0, y: 0 };
     const currentRotation = { x: 0, y: 0 };
     const targetPos = { x: 0, y: 0 };
     const currentPos = { x: 0, y: 0 };
 
-    // GLTF Loader with DRACOLoader configuration
-    const loader = new GLTFLoader();
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath("/draco/gltf/");
-    loader.setDRACOLoader(dracoLoader);
+    async function loadAssets() {
+      try {
+        const textureLoader = new THREE.TextureLoader();
 
-    loader.load(
-      "/3d/o-hand.glb",
-      (gltf) => {
-        model = gltf.scene;
+        // Load all normal and roughness textures in parallel
+        const [normalMap, roughnessMap, ringNormalMap] = await Promise.all([
+          textureLoader.loadAsync("/3d/o-1024-normal.webp"),
+          textureLoader.loadAsync("/3d/o-1024-roughness.webp"),
+          textureLoader.loadAsync("/3d/o-512-ring-normal.webp"),
+        ]);
 
-        // Apply clay material & enhanced normal textures
-        model.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            const mesh = child as THREE.Mesh;
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
+        if (isDisposed) return;
 
-            const matName = (mesh.name || "").toLowerCase();
-            if (matName.includes("ring")) {
-              mesh.material = new THREE.MeshStandardMaterial({
-                color: 0x111111,
-                roughness: 0.12,
-                metalness: 0.95,
-                normalMap: ringNormalMap,
-                normalScale: new THREE.Vector2(2.0, 2.0),
-              });
-            } else {
-              mesh.material = new THREE.MeshStandardMaterial({
-                color: 0xf2f2f2,
-                roughness: 0.58,
-                metalness: 0.03,
-                normalMap: normalMap,
-                normalScale: new THREE.Vector2(2.8, 2.8),
-                roughnessMap: roughnessMap,
-              });
-            }
+        // Texture configuration for normal mapping
+        normalMap.flipY = false;
+        normalMap.colorSpace = THREE.NoColorSpace;
+        normalMap.generateMipmaps = true;
+        normalMap.minFilter = THREE.LinearMipmapLinearFilter;
+        normalMap.magFilter = THREE.LinearFilter;
+        normalMap.needsUpdate = true;
+
+        roughnessMap.flipY = false;
+        roughnessMap.colorSpace = THREE.NoColorSpace;
+        roughnessMap.generateMipmaps = true;
+        roughnessMap.needsUpdate = true;
+
+        ringNormalMap.flipY = false;
+        ringNormalMap.colorSpace = THREE.NoColorSpace;
+        ringNormalMap.generateMipmaps = true;
+        ringNormalMap.needsUpdate = true;
+
+        // GLTF & Draco Loader
+        const loader = new GLTFLoader();
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath("/draco/gltf/");
+        loader.setDRACOLoader(dracoLoader);
+
+        loader.load(
+          "/3d/o-hand.glb",
+          (gltf) => {
+            if (isDisposed) return;
+            model = gltf.scene;
+
+            // Apply textures and compute vertex tangents for accurate normal map displacement
+            model.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+
+                // Explicitly compute vertex tangents on the Draco-decoded geometry
+                try {
+                  if (typeof (mesh.geometry as any).computeTangents === "function") {
+                    (mesh.geometry as any).computeTangents();
+                  }
+                } catch (e) {
+                  console.warn("Notice: Tangents already present or non-tangent geometry", e);
+                }
+
+                const matName = (mesh.name || "").toLowerCase();
+                if (matName.includes("ring")) {
+                  mesh.material = new THREE.MeshStandardMaterial({
+                    color: 0x141414,
+                    roughness: 0.12,
+                    metalness: 0.96,
+                    normalMap: ringNormalMap,
+                    normalScale: new THREE.Vector2(2.5, 2.5),
+                  });
+                } else {
+                  // Hand mesh: Emoji_lowUV
+                  mesh.material = new THREE.MeshStandardMaterial({
+                    color: 0xf5f5f5,
+                    roughness: 0.52,
+                    metalness: 0.02,
+                    normalMap: normalMap,
+                    normalScale: new THREE.Vector2(3.5, 3.5),
+                    roughnessMap: roughnessMap,
+                  });
+                }
+                mesh.material.needsUpdate = true;
+              }
+            });
+
+            // Center model geometry
+            const box = new THREE.Box3().setFromObject(model);
+            const center = box.getCenter(new THREE.Vector3());
+            model.position.sub(center);
+            model.position.y -= 0.08;
+            model.rotation.y = baseRotationY;
+            model.scale.setScalar(0); // Start from 0 for slow scale-up entrance
+
+            scene.add(model);
+            setLoaded(true);
+          },
+          undefined,
+          (error) => {
+            console.warn("Could not load 3D GLB hand, using fallback rendering:", error);
+            setWebGlSupported(false);
           }
-        });
-
-        // Center model geometry
-        const box = new THREE.Box3().setFromObject(model);
-        const center = box.getCenter(new THREE.Vector3());
-        model.position.sub(center);
-        model.position.y -= 0.12;
-        model.rotation.y = baseRotationY;
-        model.scale.setScalar(0); // Start from 0 for slow scale-up entrance animation
-
-        scene.add(model);
-        setLoaded(true);
-      },
-      undefined,
-      (error) => {
-        console.warn("Could not load 3D GLB hand, using fallback rendering:", error);
+        );
+      } catch (err) {
+        console.warn("Failed to load textures/3d:", err);
         setWebGlSupported(false);
       }
-    );
+    }
+
+    loadAssets();
 
     // Mouse movement handler (Inverted tracking)
     const handleMouseMove = (e: MouseEvent) => {
@@ -164,12 +202,12 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
       const normY = e.clientY / window.innerHeight - 0.5;
 
       // Inverted rotation: moving mouse right rotates hand to the left
-      targetRotation.y = -normX * 0.65;
-      targetRotation.x = -normY * 0.45;
+      targetRotation.y = -normX * 0.6;
+      targetRotation.x = -normY * 0.4;
 
       // Inverted subtle position shift
-      targetPos.x = -normX * 0.22;
-      targetPos.y = normY * 0.18;
+      targetPos.x = -normX * 0.18;
+      targetPos.y = normY * 0.15;
 
       onCoordsChange?.({
         x: Math.round(e.clientX),
@@ -199,7 +237,7 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
       if (model) {
         // Slow, organic entrance scale from 0 to full size
         if (currentScale < targetScale) {
-          currentScale += (targetScale - currentScale) * 0.018;
+          currentScale += (targetScale - currentScale) * 0.016;
           model.scale.setScalar(currentScale);
         }
 
@@ -212,7 +250,7 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
         model.rotation.x = currentRotation.x;
         model.rotation.y = baseRotationY + currentRotation.y;
         model.position.x = currentPos.x;
-        model.position.y = -0.12 + currentPos.y;
+        model.position.y = -0.08 + currentPos.y;
       }
 
       renderer.render(scene, camera);
@@ -221,6 +259,7 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
     animate();
 
     return () => {
+      isDisposed = true;
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(animationFrameId);
@@ -234,12 +273,12 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
   if (!webGlSupported) {
     return (
       <div className="relative w-full h-full flex items-center justify-center">
-        <div className="relative w-[340px] sm:w-[540px] md:w-[740px] aspect-[4/3] drop-shadow-[0_25px_45px_rgba(0,0,0,0.9)]">
+        <div className="relative w-[300px] sm:w-[460px] md:w-[600px] aspect-[4/3] drop-shadow-[0_25px_45px_rgba(0,0,0,0.9)]">
           <Image
             src="/hand-peace-404.png"
             alt="Clay Peace Hand 404"
             fill
-            sizes="(max-width: 768px) 100vw, 740px"
+            sizes="(max-width: 768px) 100vw, 600px"
             priority
             className="object-contain filter contrast-[1.08] brightness-[0.98]"
           />
