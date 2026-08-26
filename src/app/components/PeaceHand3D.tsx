@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import Image from "next/image";
 
 interface PeaceHand3DProps {
@@ -84,8 +85,12 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
     const targetPos = { x: 0, y: 0 };
     const currentPos = { x: 0, y: 0 };
 
-    // GLTF Loader
+    // GLTF Loader with DRACOLoader configuration
     const loader = new GLTFLoader();
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath("/draco/gltf/");
+    loader.setDRACOLoader(dracoLoader);
+
     loader.load(
       "/3d/o-hand.glb",
       (gltf) => {
@@ -212,6 +217,7 @@ export function PeaceHand3D({ onCoordsChange }: PeaceHand3DProps) {
           src="/hand-peace-404.png"
           alt="Clay Peace Hand 404"
           fill
+          sizes="(max-width: 768px) 100vw, 440px"
           priority
           className="object-contain filter contrast-[1.08] brightness-[0.98]"
         />
