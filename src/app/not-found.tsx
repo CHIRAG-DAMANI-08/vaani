@@ -92,17 +92,17 @@ export default function NotFound() {
         </nav>
       </header>
 
-      {/* Main Center Area: Exact 404 Viewport Typography in Grey (#424242) */}
+      {/* Main Center Area: Exact 404 Viewport Typography in Light Grey (#A8A8A8) */}
       <main className="flex-1 flex flex-col items-center justify-center relative z-10 pointer-events-none">
-        <h1 className="text-[30.5vw] min-[601px]:text-[26.25vw] leading-none tracking-[-0.04em] font-normal text-[#424242] flex items-center justify-center select-none drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+        <h1 className="text-[30.5vw] min-[601px]:text-[26.25vw] leading-none tracking-[-0.04em] font-normal text-[#A8A8A8] flex items-center justify-center select-none drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
           <span
-            className="italic font-serif font-light text-[#424242]"
+            className="italic font-serif font-light text-[#A8A8A8]"
             style={{ fontFamily: "'Playfair Display', 'Instrument Serif', Georgia, serif" }}
           >
             4
           </span>
-          <span className="font-sans font-normal text-[#424242]">0</span>
-          <span className="font-sans font-bold text-[#424242]">4</span>
+          <span className="font-sans font-normal text-[#A8A8A8]">0</span>
+          <span className="font-sans font-bold text-[#A8A8A8]">4</span>
         </h1>
       </main>
 
